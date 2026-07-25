@@ -2,9 +2,6 @@
 // ---------------------------------------------------------------------------
 // Arithmetic Logic Unit for the RV32I single-cycle core.
 //
-// This is the FIRST module you should implement. It is small, self-contained,
-// and it has a fully-written testbench (tb/tb_alu.v) waiting for it. Getting
-// "ALL ALU TESTS PASSED" is your first milestone.
 //
 // The `alu_op` encoding below is the contract the rest of the datapath relies
 // on. alu_control.v produces these codes; do not change them without also
@@ -36,21 +33,23 @@ module alu #(
     output wire             zero
 );
 
-    // TODO: drive `result` with a combinational always block (case on alu_op).
-    //   Hints:
-    //   - Use `$signed(a)` / `$signed(b)` for SUB comparisons and SRA/SLT.
-    //   - Shift amount is only the low 5 bits: b[4:0].
-    //   - Give the case a `default` so `result` never latches.
-    //
-    // always @(*) begin
-    //     case (alu_op)
-    //         4'b0000: result = ... ;
-    //         ...
-    //         default: result = {WIDTH{1'b0}};
-    //     endcase
-    // end
+always @(*) begin //combinational, level sensitive like latches
+    case(alu_op) //parallel and faster than just if-else
+        4'b0000: result = a+b; //block assignment since it's combinational
+        4'b0001: result = a-b;
+        4'b0010: result = a&b;
+        4'b0011: result = a|b;
+        4'b0100: result = a^b;
+        4'b0101: result = a<<b[4:0]; //can only shift 32 bits at most
+        4'b0110: result = a>>b[4:0];
+        4'b0111: result = $signed(a)>>>b[4:0]; //fill vacated bits with the sign bits
+        4'b1000: result = $signed(a) < $signed(b) ? 32'd1 : 32'd0; //32'd mactches wdith of result, d for decimal  
+        4'b1001: result = a < b ? 32'd1 : 32'd0; 
+        default: result = {WIDTH{1'b0}}; //repeat 1'b0 by WIDTH times, need both bracket to avoid syntax error
+    endcase
 
-    // TODO: assign `zero` from `result`.
-    // assign zero = ...;
+end
+
+    assign zero = (result == 0);
 
 endmodule

@@ -52,7 +52,7 @@ module tb_alu;
 
     // ----- self-checking task ---------------------------------------------
     // Drive inputs, let combinational logic settle, compare result AND zero.
-    task check;
+    task check; //function definition of check 
         input [3:0]  op;
         input [31:0] in_a;
         input [31:0] in_b;
@@ -63,7 +63,7 @@ module tb_alu;
             b      = in_b;
             #1;  // allow combinational settle
             tests = tests + 1;
-            if (result !== exp_result) begin
+            if (result !== exp_result) begin  //!== check types and values
                 errors = errors + 1;
                 $display("FAIL  op=%b a=%h b=%h : result=%h expected=%h",
                          op, in_a, in_b, result, exp_result);
@@ -85,7 +85,7 @@ module tb_alu;
         $dumpvars(0, tb_alu);
 
         // ADD
-        check(OP_ADD, 32'd5,        32'd7,        32'd12);
+        check(OP_ADD, 32'd5,        32'd7,        32'd12); //call functoin check, with the following input: op, in_a, in_b, exp_result
         check(OP_ADD, 32'hFFFFFFFF, 32'd1,        32'd0);        // wrap -> zero
         check(OP_ADD, 32'h7FFFFFFF, 32'd1,        32'h80000000); // overflow wraps
 
