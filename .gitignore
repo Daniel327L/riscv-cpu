@@ -1,0 +1,15 @@
+# Simulation build artifacts
+build/
+*.vvp
+*.vcd
+
+# Vivado (Week 3) — keep sources, ignore generated project files
+*.jou
+*.log
+*.str
+.Xil/
+*.cache/
+*.hw/
+*.runs/
+*.sim/
+vivado*.backup*

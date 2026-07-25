@@ -1,0 +1,18 @@
+// program.hex  --  starter "smoke test" program, one 32-bit instruction per line.
+// Loaded by rtl/instr_mem.v via $readmemh (// comments are allowed and ignored).
+//
+// This tiny sequence exercises the datapath end to end once your core works:
+// two immediates, an add, a sub, a store, and a load. Expected end state:
+//   x1=5, x2=7, x3=12, x4=2, mem[0]=12, x5=12
+//
+// In Week 3, replace this with programs produced by a real assembler
+// (the RISC-V GNU toolchain, or an online RV32I assembler) so you're not
+// hand-encoding instructions.
+//
+// addr  hex        assembly              effect
+00500093   // 0x00  addi x1, x0, 5        x1 = 5
+00700113   // 0x04  addi x2, x0, 7        x2 = 7
+002081b3   // 0x08  add  x3, x1, x2       x3 = x1 + x2 = 12
+40110233   // 0x0c  sub  x4, x2, x1       x4 = x2 - x1 = 2
+00302023   // 0x10  sw   x3, 0(x0)        mem[0] = x3 = 12
+00002283   // 0x14  lw   x5, 0(x0)        x5 = mem[0] = 12
