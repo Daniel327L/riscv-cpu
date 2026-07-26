@@ -1,31 +1,18 @@
 # Devlog
 
-Keep this as you go. It costs two minutes per bug and it is the source of your
-best interview answers. When a screener asks "tell me about a hard bug you
-debugged," you want a specific, concrete story with a symptom, a hypothesis, and
-a fix — not "um, I had some bugs." Each entry below becomes one of those.
-
-Template to copy for each entry:
-
 ---
 
-## [DATE] — one-line title
+## [2026-07-26] — Time delay element in testbench involving register
 
-**Symptom:** what you observed (a failing test, a wrong value, a waveform that
-looked off). Be specific: "SRA of 0x80000000 by 4 gave 0x08000000 instead of
-0xF8000000".
+**Symptom:** When I was running the testbench file `tb_reg_file.v` I notice that even though the expected value matches with my actual stored value in the targeted register, the result was a failure for some reason. 
 
-**Hypothesis:** what you thought was wrong and why.
+**Hypothesis:** I initially thought I might have wrongly assumed what the output should be and thus the actual output should be the correct one
 
-**Investigation:** how you narrowed it down (which signals you probed in
-gtkwave, what you printed, what you changed to isolate it).
+**Investigation:** I looked through the actual v file `reg_file.v` and see if the logic made sense, I followed each line of codes and at the end my assumption of the output was correct. Then I moved on to `tb_reg_file.v` and investigate if my testbench was actually functioning as intended. 
 
-**Root cause:** the actual bug. (e.g. "used `>>` instead of `>>>`, so the shift
-was logical not arithmetic; `>>>` on an unsigned reg is still logical, so I also
-had to make the operand `$signed`.")
+**Root cause:** The actual bug is missing time delay, because the module im testbenching relies on a clock line to continuous update its value, I have to add the appropriate time delay element in my testbench to ensure enough time to set up and hold. In this case, in my `test check()`, I first assigned the inputs of the the function check into inputs that goes to the instantiated `reg_file`, and then I added a `@(posedge clk)` line below that, next that I choose which register to read from and immediately evaluate the result with if-else statement below. However, that is excatly the problem, I didn't give enough time (t~setup) to allow the address to change before evaluating the output of the register at that address.
 
-**Fix + lesson:** what you changed, and the general lesson so you don't repeat
-the class of bug.
+**Fix + lesson:** To fix this issue, I added a `#1;` line below that befor the if-else statement. It is a short line of code yet it is really significant in ensuring the functionality of my testbench. A takeaway from this is that when I'm dealing with syncrhonous deisgn and to testbench it correctly, I must pay attention to the delay element as well.
 
 ---
 
@@ -34,6 +21,5 @@ the class of bug.
 - x0 not hardwired to zero → mysterious nonzero reads.
 - Off-by-4 memory indexing (using byte address as word index).
 - Missing `default` in a case → inferred latch / X propagation.
-- Logical vs arithmetic shift (`>>` vs `>>>`, and signedness of the operand).
 - Branch immediate assembled wrong bit order → jumps to wrong target.
 - mem_write left asserted on non-store instructions → memory corruption.
