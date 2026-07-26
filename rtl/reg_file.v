@@ -24,7 +24,7 @@ module reg_file (
 );
 
     // 32 architectural registers.
-    reg [31:0] regs [0:31]; //reg type array consisting of elemenents with 32 bits width (left), 32 element in total (right)
+    reg [31:0] regs [31:0]; //reg type array consisting of elemenents with 32 bits width (left), 32 element in total (right)
                             //default as unkowns (X) by Verilog 
 
 always @(posedge clk) begin
