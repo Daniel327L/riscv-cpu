@@ -13,33 +13,33 @@
 // ---------------------------------------------------------------------------
 
 module reg_file (
-    input  wire        clk,
+    input  wire        clk,    
     input  wire        we,          // write enable
-    input  wire [4:0]  rs1_addr,
-    input  wire [4:0]  rs2_addr,
-    input  wire [4:0]  rd_addr,
-    input  wire [31:0] rd_data,
-    output wire [31:0] rs1_data,
-    output wire [31:0] rs2_data
+    input  wire [4:0]  rs1_addr,    //first input register address
+    input  wire [4:0]  rs2_addr,    //second input register address
+    input  wire [4:0]  rd_addr,     //which register to store the result of the operation
+    input  wire [31:0] rd_data,     //result of operation on input 1 and 2
+    output wire [31:0] rs1_data,    //first input 
+    output wire [31:0] rs2_data     //second input
 );
 
     // 32 architectural registers.
-    reg [31:0] regs [0:31];
+    reg [31:0] regs [0:31]; //reg type array consisting of elemenents with 32 bits width (left), 32 element in total (right)
+                            //default as unkowns (X) by Verilog 
 
-    // TODO (reads): drive rs1_data / rs2_data combinationally, returning 0 when
-    // the address is 0.
-    //   assign rs1_data = (rs1_addr == 5'd0) ? 32'b0 : regs[rs1_addr];
-    //   assign rs2_data = ...;
+always @(posedge clk) begin
 
-    // TODO (write): on posedge clk, if we and rd_addr != 0, write rd_data.
-    //   always @(posedge clk) begin
-    //       if (we && rd_addr != 5'd0)
-    //           regs[rd_addr] <= rd_data;
-    //   end
+    if(we && rd_addr != 5'd0) begin
+        regs[rd_addr] <= rd_data;
+    end
+       //don't need else statement here, since it uses a clock driven sequential block instead of latches that might ended up with inferred latches if don't
+end
 
-    // Optional but handy for simulation: initialize all registers to 0 so
-    // waveforms don't start as X. (Synthesis on the FPGA ignores this.)
+assign rs1_data = (rs1_addr != 5'd0) ? regs[rs1_addr] : 32'b0;  //in RISC-V, address 0 always rep b0 so that 
+assign rs2_data = (rs2_addr != 5'd0) ? regs[rs2_addr] : 32'b0;  //arithemtic operation with 0 is easier to deal with
+
+    
     integer i;
-    initial for (i = 0; i < 32; i = i + 1) regs[i] = 32'b0;
+    initial for (i = 0; i < 32; i = i + 1) regs[i] = 32'b0; //initialize all register as 0 just for the sake of simulation
 
 endmodule

@@ -61,7 +61,7 @@ module tb_alu;
             alu_op = op;
             a      = in_a;
             b      = in_b;
-            #1;  // allow combinational settle
+            #1;  // allow combinational settle,  #1 means delay for 1 time unit, in this case looking at our time scale is 1 ns
             tests = tests + 1;
             if (result !== exp_result) begin  //!== check types and values
                 errors = errors + 1;

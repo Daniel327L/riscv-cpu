@@ -7,7 +7,7 @@
 // with `always #5 clk = ~clk;` and drive writes on clock edges instead of #1.
 // ---------------------------------------------------------------------------
 
-`timescale 1ns/1ps
+`timescale 1ns/1ps  //time scale for testbench, it means 1ns base unit, 1ps precision 
 
 module tb_template;
 

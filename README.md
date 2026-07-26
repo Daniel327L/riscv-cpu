@@ -1,38 +1,9 @@
 # Single-Cycle RISC-V CPU (RV32I subset)
 
 A single-cycle RISC-V processor core in Verilog, verified with self-checking
-testbenches and deployed to an FPGA. This is the canonical "I want to do
-processors" project: it forces you to write real RTL, build a real verification
-harness, and produce a tangible hardware demo.
+testbenches and deployed to an FPGA. 
 
-**The one-liner this earns you:** *"Designed and verified a RISC-V CPU core in
-Verilog, deployed to FPGA."* That sentence, backed by a repo you can walk an
-interviewer through for 20 minutes, is what moves you into the digital-design /
-verification tier.
-
-The datapath logic is intentionally left for **you** to write. The scaffold
-gives you the structure, the interfaces, one fully-worked testbench, and the
-build system — but the thinking (and therefore the interview stories) is yours.
-
----
-
-## Quick start (do this tonight)
-
-1. **Install the tools** (free, open source):
-   - Ubuntu/Debian: `sudo apt install iverilog gtkwave`
-   - macOS: `brew install icarus-verilog gtkwave`
-   - Windows: use WSL2 + the apt command, or install `oss-cad-suite`.
-2. **Run the ALU test:** `make test_alu` → it FAILS, because `rtl/alu.v` is
-   empty. That failure is your starting line.
-3. **Implement `rtl/alu.v`** until you see `ALL ALU TESTS PASSED`. That first
-   green line is your foothold.
-4. Then move on in order: `reg_file` → `imm_gen` → `control` → `alu_control` →
-   memories → wire it all together in `cpu.v`.
-
-You need **no hardware** for steps 1–3, or in fact for all of Weeks 1–2. The
-board only comes in for the Week-3 demo.
-
----
+--- 
 
 ## Repository layout
 
