@@ -18,22 +18,19 @@
 // ---------------------------------------------------------------------------
 
 module imm_gen (
-    input  wire [31:0] instr,
-    output reg  [31:0] imm
+    input  wire [31:0] instr, //bit width of instruction must be 32 bits to match with other numebrs in the system,
+    output reg  [31:0] imm    //so you extend the number by padding it with 0(positive) or 1(if negative) due to 2's complement.
 );
+    wire [6:0] opcode = instr[6:0]; //the first 6 bits rep the operations of the imm.
 
-    wire [6:0] opcode = instr[6:0];
-
-    // TODO: case (opcode) selecting the correct assembly above.
-    //   always @(*) begin
-    //       case (opcode)
-    //           7'b0010011,
-    //           7'b0000011: imm = {{20{instr[31]}}, instr[31:20]};        // I
-    //           7'b0100011: imm = ...                                     // S
-    //           7'b1100011: imm = ...                                     // B
-    //           7'b1101111: imm = ...                                     // J
-    //           default:    imm = 32'b0;
-    //       endcase
-    //   end
-
+always@(*) begin
+    case(opcode)
+        7'b0010011, 7'b0000011: imm = {{20{instr[31]}}, instr[31:20]}; // based on the imm op code, gather all scrambled imm number bits tgt to get the number.
+        7'b0100011: imm = {{20{instr[31]}}, instr[31:25], instr[11:7]};
+        7'b1100011: imm = {{19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0};
+        7'b1101111: imm = {{11{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0};    
+        default: imm = 32'b0; //always add default for combinational, since FF and register holds value so u don't need a default.
+    endcase
+end
+       
 endmodule

@@ -1,7 +1,7 @@
 // alu.v
 // ---------------------------------------------------------------------------
 // Arithmetic Logic Unit for the RV32I single-cycle core.
-//
+//Purpose of ALU is to execute arithmetic operations on 2 inputs and return an output
 //
 // The `alu_op` encoding below is the contract the rest of the datapath relies
 // on. alu_control.v produces these codes; do not change them without also
