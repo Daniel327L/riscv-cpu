@@ -1,6 +1,6 @@
 # Progress log
 
-> #Day 1 - 2026-07-25
+>  Day 1 - 2026-07-25 
 
 ## Done 
 - Finished building the Arithmetic Logic Unit or ALU in short (`alu.v`). Tsted with a dedicated testbench file (`tb_alu.v`), all 16 test passed. Wrote combinational case for all 10 alu ops; learned signed shifts + b[4:0] slicing. 
@@ -17,10 +17,26 @@
 > Day 2 - 2026-07-26
 
 ## Done
-- Finished building register file testbench (`tb_reg_file.v`), learned how to build a testbench when synrchronous block is involved, such as time delay, how to generate a clock signal. Also, how to build a check function to check different cases, display results, use of system task and functions. The cases are not random, coming up cases that covers lots of scenarios, like what happen when your read address is 0 but enable is 1, in RISC-V, address 0 register always store the value 0, easier for doing arithmetic with 0.
+- Finished building register file testbench (`tb_reg_file.v`)
+- Learned how to build a testbench when synrchronous block is involved, such as time delay, how to generate a clock signal. Also, how to build a check function to check different cases, display results, use of system task and functions. The cases are not random, coming up cases that covers lots of scenarios, like what happen when your read address is 0 but enable is 1, in RISC-V, address 0 register always store the value 0, easier for doing arithmetic with 0.
 
 ![](Images/reg_file_test.png)
 *REG_FILE Passing*
 
 ## Doing
 - Moving on to imm_gen (`imm_gen.v`)
+
+> Day 3 - 2026-07-27
+
+## Done
+- Done building immediate generation file (`imm_gen.v`)
+- Basically learned what does a instruction contains, and that the last 7 bits is reserved for op-code that tells the system what type of operations it is. For example I-type needs 2 source register address, 1 destination register address, a 12 bit immediate and a predetermined 7 bits op-code used conventionally for RISc-V.
+- Also understood why the immediate is often scrambled in the instruction, because different operations requires different amount of source register address and maybe doesn't need a destination, writing into the memory instead. So the point of the immediate generation is to pull the scrambled immediate in an instruction and piece the numbers back together.
+- Understood the logic behind the testbench for this module (`tb_imm_gen.v`), plan to use contactenation to work backwards for coming up with expected values to check, that way I don't have to disect a random 32 bits instruction every single time.
+
+## Doing
+- Working on testbench (`tb_imm_gen.v`), have the logic in mind but just need some time to implement it in Verilog.
+
+
+
+
