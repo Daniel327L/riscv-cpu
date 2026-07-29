@@ -15,11 +15,3 @@
 **Fix + lesson:** To fix this issue, I added a `#1;` line below that befor the if-else statement. It is a short line of code yet it is really significant in ensuring the functionality of my testbench. A takeaway from this is that when I'm dealing with syncrhonous deisgn and to testbench it correctly, I must pay attention to the delay element as well.
 
 ---
-
-## Starter prompts (common bugs on this project, so you know what to watch for)
-
-- x0 not hardwired to zero → mysterious nonzero reads.
-- Off-by-4 memory indexing (using byte address as word index).
-- Missing `default` in a case → inferred latch / X propagation.
-- Branch immediate assembled wrong bit order → jumps to wrong target.
-- mem_write left asserted on non-store instructions → memory corruption.

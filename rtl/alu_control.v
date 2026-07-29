@@ -30,14 +30,4 @@ module alu_control (
     output reg  [3:0] alu_ctrl    // fine code consumed by alu.v
 );
 
-    // TODO: combinational decode.
-    //   always @(*) begin
-    //     case (alu_op)
-    //         2'b00: alu_ctrl = 4'b0000;                 // ADD
-    //         2'b01: alu_ctrl = 4'b0001;                 // SUB
-    //         2'b10: case (funct3) ... endcase           // decode R/I-type
-    //         default: alu_ctrl = 4'b0000;
-    //     endcase
-    //   end
-
 endmodule

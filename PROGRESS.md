@@ -37,6 +37,20 @@
 ## Doing
 - Working on testbench (`tb_imm_gen.v`), have the logic in mind but just need some time to implement it in Verilog.
 
+> Day 4 - 2026-07-28
+
+## Done
+- Completed immediate generation testbench (`tb_imm_gen.v`), hardest part was really coming with expected value for tests. 
+- Getting more familiar with the testbench format, and also better some of my understanding of the when to use wire and reg, as well as how strings are treated in Verilog, kind of annoying because Icarus doesn't really compile when you have a wide string as inputs for task, which is why it took me so long to get it to run.
+- Just tested a few cases for each operation type, like the sign bit extending and basic un-scrambelling of the immediate from the instruction bits.
+- Also understand why it's B-type and J-type has different immediate structure comparing other type like I and S. 
+
+![](Images/imm_gen_test.png)
+*IMM_GEN Passing*
+
+## Doing
+- Moving on to control unit (`control.v`), which reads the opcode and produce all datapath control signals from all the module I've built so far. 
+- Before implementing that I will fill in the `control_signals.md` just to organize my thinking and wiring. 
 
 
 
