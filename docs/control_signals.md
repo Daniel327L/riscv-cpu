@@ -1,8 +1,22 @@
 # Control Signal Table — fill this in BEFORE writing `control.v`
 
-This table is the single best shortcut to a correct `control.v`. Work it out on
-paper (or here) first; then the module is almost a direct transcription. Every
-cell is either 0, 1, X (don't-care), or a 2-bit `alu_op` value.
+## Context
+
+For each type of opreation implemented previously in imm_gen, some of them require access to memory, some need a destination registr, and some don't even need an immediate, so this table basically organize all signals and label them as need / don't need, and for alu_op
+column, it's 00, 01 or 10 that I'll implement after this control unit in `alu_control.v`.
+
+- R-type: 
+  * Needs two register to read from, do math on both values from those two register and store in destination register.
+- I-type: 
+  * addi / subi / xori ..... all means do math with a value from one read register and a number (immediate), then save result in a destination.
+  * lw --> extract a value from one read register, offset it by an immediate, and use it as a address in memory, and load the extracted result form memory into a regiter.
+- S-type:
+  * sw --> similar to lw, but instead of writing into a register, write the value from a register into a memory which its address is another read register + an offset (immediate).
+- B-type:
+  * Compare two read register, if [condition], then jump to nearby instruction (PC + immediate, where PC means program counter, address for current instruction) dictate by the immediate offset.
+- J-type:
+  * Always jump to a target and return the return address (PC+4) to a register, why plus 4? cuz the next instruction is 4 bytes away from where you jumped off. Speaking of which, memory counts bytes, so instruction 0 is at address0, next one is 4, then 8 so on.
+
 
 `alu_op` legend (coarse selector for `alu_control.v`):
 `00` = force ADD (address calc / jump) · `01` = force SUB (branch compare) ·
@@ -10,27 +24,14 @@ cell is either 0, 1, X (don't-care), or a 2-bit `alu_op` value.
 
 | instruction | opcode    | reg_write | alu_src | mem_read | mem_write | mem_to_reg | branch | jump | alu_op |
 |-------------|-----------|-----------|---------|----------|-----------|------------|--------|------|--------|
-| R-type      | `0110011` |           |         |          |           |            |        |      |        |
-| I-type ALU  | `0010011` |           |         |          |           |            |        |      |        |
-| lw          | `0000011` |           |         |          |           |            |        |      |        |
-| sw          | `0100011` |           |         |          |           |            |        |      |        |
-| beq (branch)| `1100011` |           |         |          |           |            |        |      |        |
-| jal         | `1101111` |           |         |          |           |            |        |      |        |
+| R-type      | `0110011` |    1      |   0     |   0      |   0       |    0       | 0      |  0   |  10    |
+| I-type ALU  | `0010011` |    1      |   1     |   0      |   0       |    0       | 0      |  0   |  10    |
+| lw          | `0000011` |    1      |   1     |   1      |   0       |    1       | 0      |  0   |  10    |
+| sw          | `0100011` |    0      |   1     |   0      |   1       |    0       | 0      |  0   |  10    |
+| beq (branch)| `1100011` |    0      |   0     |   0      |   0       |    0       | 1      |  0   |  01    |
+| jal         | `1101111` |    1      |   0     |   0      |   0       |    0       | 0      |  1   |  00    | 
 
-## How to reason about each column
+*for alu_op for branch, it checks if the two register are equal by subtracting them see if they equal zero, thats why FORCE SUB. 
+*for jal, 00 just because it doesn't use ALU at all, PC + 4 and PC offsetting is done by PC logic not ALU. Same as the immediate offset for branch, handled by PC logic.
 
-- **reg_write** — does this instruction produce a value that lands in a
-  register? (Loads and ALU ops and jal do; stores and branches don't.)
-- **alu_src** — is ALU operand B an immediate (1) or a register (0)? Loads,
-  stores, and I-type use the immediate; R-type and branch use registers.
-- **mem_read / mem_write** — only loads read, only stores write. Everything
-  else is 0 (important: leaving mem_write asserted corrupts memory).
-- **mem_to_reg** — for the value going back to the register file, is it from
-  memory (1, loads) or the ALU (0, everything else)?
-- **branch / jump** — flags the PC-update logic. Exactly one is set for
-  control-flow instructions; both 0 otherwise.
-- **alu_op** — see legend. Address calc for lw/sw and the target add for jal is
-  `00`; branch compare is `01`; R/I-type is `10`.
 
-Once the table is complete, `control.v` is a `case (opcode)` that sets these
-outputs per row, starting from an all-zero default.

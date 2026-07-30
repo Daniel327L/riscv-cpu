@@ -53,4 +53,15 @@
 - Before implementing that I will fill in the `control_signals.md` just to organize my thinking and wiring. 
 
 
+> Day 5 - 2026-07-29
+
+## Done
+- Completed control signal table (`control_signal.md`).
+- Understood function of different instruction type, and what component they require to work.
+
+## Doing
+- Will move on to control unit (`control.v`) next time I work on this. 
+
+
+
 
