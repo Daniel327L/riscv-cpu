@@ -37,18 +37,43 @@ module control (
     output reg [1:0]  alu_op
 );
 
-    // TODO: one combinational `case (opcode)` that sets every output for each
-    // opcode above. Start every branch from a known-safe default (all zeros)
-    // so you never accidentally leave a signal asserted:
-    //
-    //   always @(*) begin
-    //       {reg_write, alu_src, mem_read, mem_write,
-    //        mem_to_reg, branch, jump} = 7'b0;
-    //       alu_op = 2'b00;
-    //       case (opcode)
-    //           7'b0110011: begin ... end   // R-type
-    //           ...
-    //       endcase
-    //   end
+    always @(*) begin
+        {reg_write, alu_src, mem_read, mem_write, mem_to_reg, branch, jump} = 7'b0;
+        alu_op = 2'b0;
+        case(opcode)
+        7'b0110011: begin //R-type
+            reg_write = 1'b1;
+            alu_op = 2'b10;
+        end
+        7'b0010011: begin //I-type alu
+            reg_write = 1'b1;
+            alu_src = 1'b1;
+            alu_op = 2'b10;
+        end
+        7'b0000011: begin //I-type load
+            reg_write = 1'b1;
+            alu_src = 1'b1;
+            mem_read = 1'b1;
+            mem_to_reg = 1'b1;
+            alu_op = 2'b0;
+        end
+        7'b0100011: begin //S-type
+            alu_src = 1'b1;
+            mem_write = 1'b1;
+            alu_op = 2'b0;
+        end
+        7'b1100011: begin //B-type
+            branch = 1'b1;
+            alu_op = 2'b01;
+        end
+        7'b1101111: begin //J-type
+            reg_write = 1'b1;
+            jump = 1'b1;
+            alu_op = 2'b0;
+        end
 
+        endcase
+
+    end
+   
 endmodule

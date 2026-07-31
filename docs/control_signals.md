@@ -26,12 +26,12 @@ column, it's 00, 01 or 10 that I'll implement after this control unit in `alu_co
 |-------------|-----------|-----------|---------|----------|-----------|------------|--------|------|--------|
 | R-type      | `0110011` |    1      |   0     |   0      |   0       |    0       | 0      |  0   |  10    |
 | I-type ALU  | `0010011` |    1      |   1     |   0      |   0       |    0       | 0      |  0   |  10    |
-| lw          | `0000011` |    1      |   1     |   1      |   0       |    1       | 0      |  0   |  10    |
-| sw          | `0100011` |    0      |   1     |   0      |   1       |    0       | 0      |  0   |  10    |
+| lw          | `0000011` |    1      |   1     |   1      |   0       |    1       | 0      |  0   |  00    |
+| sw          | `0100011` |    0      |   1     |   0      |   1       |    0       | 0      |  0   |  00    |
 | beq (branch)| `1100011` |    0      |   0     |   0      |   0       |    0       | 1      |  0   |  01    |
 | jal         | `1101111` |    1      |   0     |   0      |   0       |    0       | 0      |  1   |  00    | 
 
-*for alu_op for branch, it checks if the two register are equal by subtracting them see if they equal zero, thats why FORCE SUB. 
-*for jal, 00 just because it doesn't use ALU at all, PC + 4 and PC offsetting is done by PC logic not ALU. Same as the immediate offset for branch, handled by PC logic.
+* for alu_op for branch, it checks if the two register are equal by subtracting them see if they equal zero, thats why FORCE SUB. 
+* for jal, 00 just because it doesn't use ALU at all, PC + 4 and PC offsetting is done by PC logic not ALU. Same as the immediate offset for branch, handled by PC logic.
 
 

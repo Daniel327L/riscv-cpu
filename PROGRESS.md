@@ -62,6 +62,16 @@
 ## Doing
 - Will move on to control unit (`control.v`) next time I work on this. 
 
+> Day 6 - 2026-07-30
 
+## Done
+- Using the filled in control signal table, implemented the decoding of 7 bit opcode.
+- It basically activates different signal for different operator, and alu_op has either force ADD / SUB and one for other ALU operations
+
+![](Images/control_test.png)
+*CONTROL Passing*
+
+## Doing
+- Moving on to alu control, that decodes the coarse 2bit alu_op and function3, one of function7 bits, all into the 4 bits fine alu_op that I've designed in `alu.v`.
 
 
