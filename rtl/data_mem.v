@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 
 module data_mem #(
-    parameter DEPTH = 256                     // number of 32-bit words
+    parameter DEPTH = 256                 //256 is a deliberate choice, keep the memory small no need bigger
 ) (
     input  wire        clk,
     input  wire        mem_read,

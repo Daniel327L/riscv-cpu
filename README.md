@@ -43,7 +43,7 @@ testbench modeled on `tb/tb_alu.v`.
 - **Day 3:** `reg_file.v` (get x0 right) + a `tb_reg_file.v`.
 - **Day 4:** `imm_gen.v` + `tb_imm_gen.v` (test I/S/B/J immediates).
 - **Day 5:** `control.v` + `alu_control.v` from your filled-in table.
-- **Milestone:** every leaf module passes its own testbench.
+- **Milestone:** every leaf module passes its own testbench. //finished 
 
 ### Week 2 — the datapath (still simulation)
 - Implement the memories (`instr_mem.v`, `data_mem.v`).

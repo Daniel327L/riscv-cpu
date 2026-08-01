@@ -12,21 +12,19 @@
 // ---------------------------------------------------------------------------
 
 module instr_mem #(
-    parameter DEPTH    = 256,                 // number of 32-bit words
-    parameter MEM_FILE = "test/program.hex"
+    parameter DEPTH    = 256,  //256 is a deliberate choice, keep the memory small no need bigger
+    parameter MEM_FILE = "test/program.hex" //parameter runs during compilation, cannot change during runtime
 ) (
-    input  wire [31:0] addr,
+    input  wire [31:0] addr, //address are written in byte form by the program, each address increment by 4 bytes
     output wire [31:0] instr
 );
 
-    reg [31:0] mem [0:DEPTH-1];
+    reg [31:0] mem [0:DEPTH-1]; //mem is our actual memory, up to 256 instructions storing capability. 
 
     initial begin
-        // $readmemh loads whitespace/newline-separated hex words into mem[].
-        $readmemh(MEM_FILE, mem);
+        $readmemh(MEM_FILE, mem); //read each line of in MEM_FILE as hex (our instruction in hex), and put them into array slots in mem.
     end
 
-    // TODO: word-align the byte address and read.
-    //   assign instr = mem[addr[31:2]];   // (mask to log2(DEPTH) bits if needed)
-
+    assign instr = mem[addr[9:2]]; // disregard first 2 bits to convert byte address into word index, so 4 --> 1, 8 -->2 , 12 -->3 so on
+                                   //address sent by progrma can be huge, but here we only have 256 spot, so 8 bits will do (2^8 goes up to 256)
 endmodule

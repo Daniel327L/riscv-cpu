@@ -65,8 +65,9 @@
 > Day 6 - 2026-07-30
 
 ## Done
-- Using the filled in control signal table, implemented the decoding of 7 bit opcode.
+- Using the filled in control signal table, implemented the decoding of 7 bit opcode for control module (`control.v`)
 - It basically activates different signal for different operator, and alu_op has either force ADD / SUB and one for other ALU operations
+- Build a simple displaying testbench for verifying the LUT (`tb_control.v`).
 
 ![](Images/control_test.png)
 *CONTROL Passing*
@@ -74,4 +75,19 @@
 ## Doing
 - Moving on to alu control, that decodes the coarse 2bit alu_op and function3, one of function7 bits, all into the 4 bits fine alu_op that I've designed in `alu.v`.
 
+> Day 7 - 2026-08-01
 
+## Done
+- Completed alu control (`alu_control.v`), don't really need a testbench, just a simple LUT. 
+- Learned about why there are unassigned bits in function7 which is part of the instruction ; they are for extensions or specific application the designer chose to implement.
+- Finished instruction memory module (`instr_mem.v`) as well as testbench (`tb_instr_mem.v`).
+- Understood the address structure, converting of bytes address into word index of mem array by disregarding the first 2 bits (equivalent of dividing by 4).
+- Learned new system function `$readmemh` which reads lines of hex numbers in a file and put one and each of them in array slots.
+- So for the testbench, I've used `program.hex` for the system task to read off, and see if the instructions result matches with the values I read from the memory array. 
+
+![](Images/instr_mem_test.png)
+*INSTR_MEM Passing*
+
+## Doing
+- Will move on to `data_mem.v`, should relatively similiar to `reg_file.v`.
+- After that, routinely will build a testbench.

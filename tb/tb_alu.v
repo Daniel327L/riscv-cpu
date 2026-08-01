@@ -30,7 +30,7 @@ module tb_alu;
     integer tests  = 0;
 
     // ALU op encodings (must match rtl/alu.v).
-    localparam [3:0] OP_ADD  = 4'b0000,
+    localparam [3:0] OP_ADD  = 4'b0000, //local param prevent any alteration
                      OP_SUB  = 4'b0001,
                      OP_AND  = 4'b0010,
                      OP_OR   = 4'b0011,
