@@ -71,7 +71,6 @@ module control (
             jump = 1'b1;
             alu_op = 2'b0;
         end
-
         endcase
 
     end
