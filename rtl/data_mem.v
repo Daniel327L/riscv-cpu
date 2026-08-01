@@ -22,16 +22,18 @@ module data_mem #(
 
     reg [31:0] mem [0:DEPTH-1];
 
-    // TODO (write): synchronous, on posedge clk when mem_write.
-    //   always @(posedge clk)
-    //       if (mem_write) mem[addr[31:2]] <= write_data;
+    always@(posedge clk) begin
+        if(mem_write)
+            mem[addr[9:2]] <= write_data; //loading must be syncrhonized 
+    end
 
-    // TODO (read): combinational, gated by mem_read (return 0 when not reading
-    // is fine for this core).
-    //   assign read_data = mem_read ? mem[addr[31:2]] : 32'b0;
+    assign read_data = mem_read ? mem[addr[9:2]] : 32'b0; //simple logic for reading
 
-    // Optional: zero-initialize for clean waveforms.
-    integer i;
-    initial for (i = 0; i < DEPTH; i = i + 1) mem[i] = 32'b0;
+    integer i = 0;
+    
+    initial begin  //initialize all data as 0 
+    for(i = 0; i < DEPTH; i = i + 1)  
+        mem[i] = 32'b0;
+    end
 
 endmodule

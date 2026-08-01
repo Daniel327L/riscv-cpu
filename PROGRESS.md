@@ -75,7 +75,7 @@
 ## Doing
 - Moving on to alu control, that decodes the coarse 2bit alu_op and function3, one of function7 bits, all into the 4 bits fine alu_op that I've designed in `alu.v`.
 
-> Day 7 - 2026-08-01
+> Day 7 - 2026-07-31
 
 ## Done
 - Completed alu control (`alu_control.v`), don't really need a testbench, just a simple LUT. 
@@ -91,3 +91,15 @@
 ## Doing
 - Will move on to `data_mem.v`, should relatively similiar to `reg_file.v`.
 - After that, routinely will build a testbench.
+
+> Day 8 - 2026-08-01
+
+## Done
+- Finished data memory module (`data_mem.v`), implementing an memory array and read and write functions.
+- Completed testbench for this module (`tb_data_mem.v`) as well as testing multiple cases.
+
+![](Images/data_mem_test.png)
+*DATA_MEM Passing*
+
+## Doing
+- Moving on to CPU module (`cpu.v`) and wire all module I've implemented together.
