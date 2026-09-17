@@ -37,6 +37,10 @@ $(BUILD):
 test_%: $(BUILD)
 	$(IVERILOG) $(IFLAGS) -o $(BUILD)/$*.vvp $(TB)/tb_$*.v $(RTL)/$*.v
 	$(VVP) $(BUILD)/$*.vvp
+	
+test_cpu:  #because cpu module needs to instantiate all other 8 modules, so need special make command
+	iverilog -g2012 -Wall -o build/cpu.vvp tb/tb_cpu.v rtl/*.v
+	vvp build/cpu.vvp
 
 # Open the waveform a test produced. Assumes the tb dumps tb_<name>.vcd.
 wave_%:
