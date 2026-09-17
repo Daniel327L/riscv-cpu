@@ -103,3 +103,16 @@
 
 ## Doing
 - Moving on to CPU module (`cpu.v`) and wire all module I've implemented together.
+
+> Day 9 - 2026-09-16
+
+## Done
+- Quite a gap from Day 8, that's because final exams and family trip took up most of my time. 
+- Finished `cpu.v` stage one, aka the program instruction address handling.
+- Displayed waveform to check pc behaviours when resetting. 
+
+![](Images/Cpu%20waveform%201.png)
+*Stage 1 cpu waveform with clk line, instruction, pc_out and reset pulse*
+
+## Doing
+- Moving on to stage 2 of `cpu.v`.
