@@ -25,11 +25,15 @@ initial begin
     $dumpvars(0, tb_cpu);
     
     reset = 1;
-    #2 reset = 0;
+    #12 reset = 0;
     #12 reset = 1;
-    repeat (10) @(posedge clk);
+    repeat (5) @(posedge clk); //repeat @(posedge clk) delay 10 times
 
+    reset = 0;
+    #12 reset = 1;
+    repeat (5) @(posedge clk);
     $finish;
+    
 end
 endmodule 
 
