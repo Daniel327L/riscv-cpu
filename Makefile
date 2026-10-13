@@ -44,7 +44,7 @@ test_cpu:  #because cpu module needs to instantiate all other 8 modules, so need
 
 # Open the waveform a test produced. Assumes the tb dumps tb_<name>.vcd.
 wave_%:
-	$(GTKWAVE) tb_$*.vcd &
+	"/mnt/c/Users/danie/Desktop/Work/gtkwave-3.3.100-bin-win64/gtkwave64/bin/gtkwave.exe" tb_$*.vcd &
 
 # ---------------------------------------------------------------------------
 # Whole-core elaboration. This does NOT run a program (you'll add tb_cpu.v in

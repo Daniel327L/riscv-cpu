@@ -116,3 +116,19 @@
 
 ## Doing
 - Moving on to stage 2 of `cpu.v`.
+
+> Day 10 - 2026-10-12
+
+## Done
+- Another gap from previous day because my laptop was reparing
+- Finished stage 2 and 3 of `cpu.v`, including immediate generation, register file, alu control / alu decode, and a control module drive signals such as jump, branch, register writing enable etc. 
+
+
+![](Images/CPU%20stage%202%20and%203%20waveform.png)
+*Stage 2 & 3 cpu waveform, showcasing all signals and arithmetic result.*
+
+![](Images/Program%20hex.png)
+*I used this to compare the result from waveform, to verify arithmetic result and other signals.
+
+## Doing
+- Moving on to stage 4, which is memory and write back for lw/sw operation.

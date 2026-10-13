@@ -15,12 +15,12 @@
 module reg_file (
     input  wire        clk,    
     input  wire        we,          // write enable
-    input  wire [4:0]  rs1_addr,    //first input register address
-    input  wire [4:0]  rs2_addr,    //second input register address
-    input  wire [4:0]  rd_addr,     //which register to store the result of the operation
-    input  wire [31:0] rd_data,     //result of operation on input 1 and 2
-    output wire [31:0] rs1_data,    //first input 
-    output wire [31:0] rs2_data     //second input
+    input  wire [4:0]  rs1_addr,    //first  register address to extract value inside
+    input  wire [4:0]  rs2_addr,    //second register address to extract value inside
+    input  wire [4:0]  rd_addr,     //which register to store rd_data
+    input  wire [31:0] rd_data,     //values you want to store 
+    output wire [31:0] rs1_data,    //first output 
+    output wire [31:0] rs2_data     //second output
 );
 
     // 32 architectural registers.
@@ -38,8 +38,6 @@ end
 assign rs1_data = (rs1_addr != 5'd0) ? regs[rs1_addr] : 32'b0;  //in RISC-V, address 0 always rep b0 so that 
 assign rs2_data = (rs2_addr != 5'd0) ? regs[rs2_addr] : 32'b0;  //arithemtic operation with 0 is easier to deal with
 
-    
-    integer i;
-    initial for (i = 0; i < 32; i = i + 1) regs[i] = 32'b0; //initialize all register as 0 just for the sake of simulation
+
 
 endmodule
