@@ -128,7 +128,8 @@
 *Stage 2 & 3 cpu waveform, showcasing all signals and arithmetic result.*
 
 ![](Images/Program%20hex.png)
-*I used this to compare the result from waveform, to verify arithmetic result and other signals.
+
+*I used this to compare the result from waveform, to verify arithmetic result and other signals.*
 
 ## Doing
 - Moving on to stage 4, which is memory and write back for lw/sw operation.
