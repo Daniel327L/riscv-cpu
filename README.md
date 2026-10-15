@@ -1,36 +1,9 @@
 # Single-Cycle RISC-V CPU (RV32I subset)
 
 A single-cycle RISC-V processor core in Verilog, verified with self-checking
-testbenches and deployed to an FPGA. 
+testbenches and deployed to an FPGA. Also utilized RISC-V test suite verify my design.
 
 --- 
-
-## Repository layout
-
-```
-riscv-cpu/
-├── README.md              this file
-├── Makefile               make test_<module>, make wave_<module>, make cpu
-├── rtl/                   the core — 8 module skeletons, ports defined, logic = TODO
-│   ├── alu.v              arithmetic/logic unit          (start here)
-│   ├── alu_control.v      refines control's alu_op into the ALU's 4-bit code
-│   ├── control.v          main opcode decoder → datapath control signals
-│   ├── reg_file.v         32×32 register file (x0 hardwired to 0)
-│   ├── imm_gen.v          immediate extraction + sign-extension
-│   ├── instr_mem.v        instruction memory (loads test/program.hex)
-│   ├── data_mem.v         data memory for lw/sw
-│   └── cpu.v              top-level datapath (wires modules; PC/muxes = TODO)
-├── tb/
-│   ├── tb_alu.v           FULLY WORKED self-checking testbench (your template)
-│   └── tb_template.v      skeleton to copy for every other module
-├── docs/
-│   ├── control_signals.md control-signal table to fill in BEFORE coding control.v
-│   └── devlog.md          bug-story log (fills your interview answers)
-└── test/
-    └── program.hex        starter smoke-test program
-```
-
----
 
 ## 3-week milestone plan
 
@@ -64,12 +37,6 @@ testbench modeled on `tb/tb_alu.v`.
 - Synthesize, implement, generate bitstream, program the board.
 - **Milestone:** your CPU steps through a program on real hardware, with values
   visible on the board. Film a 15-second clip for your portfolio.
-
-**Stretch (great follow-ups, mention them in interviews):** add `jalr`, `lui`,
-`auipc`, and the full branch set; assemble larger programs with the RISC-V GNU
-toolchain; then the big one — **pipeline it** (5-stage: IF/ID/EX/MEM/WB with
-hazard detection and forwarding). The pipeline is the natural "what would you do
-next" answer and shows you understand the hard part.
 
 ---
 
@@ -110,62 +77,9 @@ next" answer and shows you understand the hard part.
    +------------------------------------------+--> reg_file.rd_data
 ```
 
-Draw your own version as you build — being able to redraw this from memory at a
-whiteboard is exactly the interview skill this project trains.
-
 ---
 
-## Instruction subset (v1 target)
-
-R-type: `add sub and or xor sll srl sra slt sltu` ·
-I-type: `addi andi ori xori slti sltiu slli srli srai` ·
-Load: `lw` · Store: `sw` · Branch: `beq` (extend to `bne/blt/bge/bltu/bgeu`) ·
-Jump: `jal`. This is enough to run real programs (loops, conditionals, memory).
-`jalr/lui/auipc` are easy adds once the above works.
-
----
-
-## Recommended board & toolchain
-
-- **Board:** Digilent **Basys 3** (Artix-7 XC7A35T) — 16 switches, 16 LEDs,
-  4-digit 7-segment, USB-JTAG + USB-UART on board, ~$124 with academic pricing.
-  Ideal for showing a CPU's state without buying extra parts. The **Arty A7-35T**
-  is an equally good same-chip alternative if you later want Ethernet/DDR3.
-- **Simulation:** Icarus Verilog (`iverilog`/`vvp`) + GTKWave — Weeks 1–2.
-- **Synthesis:** AMD **Vivado** Standard edition (free) — Week 3. Large install
-  (~50–100 GB, wants 8 GB+ RAM), runs on your laptop.
-
----
-
-## Interview prep — questions you'll actually get
-
-Keep a real answer to each of these; the project gives you the material.
-
-1. **"Walk me through your datapath."** Redraw the diagram above from memory and
-   trace one instruction (e.g. `lw`) through every stage.
-2. **"Why single-cycle, and what's the downside?"** Simple control, but the
-   clock period is set by the slowest instruction's whole path (load: PC →
-   imem → regfile → ALU → dmem → writeback). Pipelining fixes throughput.
-3. **"How did you verify it?"** Self-checking testbenches per module, then a
-   whole-core test asserting end state. Show `tb_alu.v` and a waveform.
-4. **"Tell me about a hard bug."** Pull a concrete entry from `docs/devlog.md`:
-   symptom → hypothesis → how you found it in the waveform → root cause → fix.
-5. **"How is x0 handled?"** Hardwired to zero: writes ignored, reads return 0.
-6. **"Logical vs arithmetic shift?"** `srl` zero-fills, `sra` sign-fills;
-   in Verilog that's `>>` vs `>>>` on a `$signed` operand.
-7. **"What would you do next?"** Pipeline it — and explain hazards (data hazards
-   → forwarding/stalls; control hazards → branch handling). This answer alone
-   signals you understand where the real difficulty lives.
-
----
-
-## Verification is the point
-
-The self-checking testbench pattern in `tb/tb_alu.v` is not busywork — it's the
-exact skill co-op screeners for verification roles (often a lower bar than
-design roles, same industry) look for. Write one for every module. "I verified
-it" with waveforms to show beats "I built it" every time.
-
-Ship the repo, put it at the top of your Projects section, drop a photo/clip of
-the board running in your portfolio, and the digital-design conversations stop
-being ones where you have nothing to point at.
+### Future Plans:
+- Pipeline it after finishing single cycle
+- Add a cache
+- M-extensions / branch detectors 

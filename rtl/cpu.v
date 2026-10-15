@@ -8,11 +8,14 @@ reg [31:0] pc;
 
 
 always@(posedge clk) begin
-    if(reset)begin
-        pc <= pc + 32'd4; 
+    if(!reset)begin
+        pc <= 32'd0; 
+    end
+    else if ((branch && zero) || jump )  begin
+        pc <= pc + instruction;
     end
     else begin
-        pc <= 32'd0; //for pc, don't need to initialize before always block, since real hardware resets at power on.
+        pc <= pc + 32'd4; 
     end
 end 
 
@@ -21,7 +24,7 @@ instr_mem u1(
 .instr(instruction)
 );
 
-wire [31:0] immediate, rd_data, rs1_data, rs2_data, alu_b, alu_result;
+wire [31:0] immediate, rd_data, rs1_data, rs2_data, alu_b, alu_result, read_data;
 wire reg_write, alu_src, mem_read, mem_write, mem_to_reg, branch, jump, zero;
 wire [1:0] alu_op;
 wire [3:0] finer_alu_op;
@@ -71,6 +74,19 @@ alu u6 (
 );
 
 assign alu_b = alu_src ? immediate : rs2_data; 
-assign rd_data = alu_result; //not complete, but just for the sake of preventing floating rd_data, assign it to alu result for now.
+assign rd_data = mem_to_reg ? read_data : 
+                 jump ? pc + 32'd4: //rd_data is the write back data, and it can store either the alu result or data read from memory
+                 alu_result; // but if it's jump that the write back is pc + 4; 
+
+data_mem u7 (
+.clk(clk),
+.mem_read(mem_read),
+.mem_write(mem_write),
+.addr(alu_result), //for lw, alu_result is the address resulted from grabing a rs1_data, force add it with an immediate 
+.write_data(rs2_data), //for sw, rs2_data = value to store in memory, rs1_data + immediate = address of that memory 
+.read_data(read_data) //result from lw 
+);
+
+
 
 endmodule   

@@ -133,3 +133,16 @@
 
 ## Doing
 - Moving on to stage 4, which is memory and write back for lw/sw operation.
+
+> Day 11 - 2026-10-14
+
+## Done
+- Finished stage 4, using waveform I checked if lw/sw are working as intended, and you can see in the waveform that in the seocnd last instruciton, it loads (sw) 12 or `C` in hex into mem[0], and then in the last instruction it extracts (lw) from mem[0] which is evident in rd_data as being `C` in that clock cycle.
+- Finished stage 5 which is pc handling when either branch or jump is used.
+
+![](Images/CPU%20stage%204%20waveform.png)
+*Stage 4 cpu waveform, verifying lw/sw functionality. 
+
+## Doing 
+- Run regression check to see if everything is working correctly
+- Write small program to check jump and branch functionality.

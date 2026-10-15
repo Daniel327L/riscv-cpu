@@ -27,11 +27,7 @@ initial begin
     reset = 1;
     #12 reset = 0;
     #12 reset = 1; //means 12 ns from this point
-    repeat (5) @(posedge clk); //repeat @(posedge clk) delay 10 times
-
-    reset = 0;
-    #12 reset = 1;
-    repeat (5) @(posedge clk);
+    repeat (6) @(posedge clk); //repeat @(posedge clk) delay 10 times
     $finish;
     
 end
