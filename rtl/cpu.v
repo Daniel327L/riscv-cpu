@@ -12,7 +12,7 @@ always@(posedge clk) begin
         pc <= 32'd0; 
     end
     else if ((branch && zero) || jump )  begin
-        pc <= pc + instruction;
+        pc <= pc + immediate;
     end
     else begin
         pc <= pc + 32'd4; 

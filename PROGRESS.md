@@ -146,3 +146,16 @@
 ## Doing 
 - Run regression check to see if everything is working correctly
 - Write small program to check jump and branch functionality.
+
+> Day 12 - 2026-10-17
+
+## Done
+- Old programs still runs
+- Loaded a new program to check `beq` and `jal`, and checked waveform to ensure program counter jump is correct
+
+![](Images/CPU%20stage%205%20waveform.png)
+*Stage 5 cpu waveform, ensureing rd_data and pc jumping matches with corresponding instruction.
+
+## Doing
+- Waiting for development board to arrive
+- Perhaps move on to upgrade 

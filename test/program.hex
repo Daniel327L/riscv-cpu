@@ -9,10 +9,12 @@
 // (the RISC-V GNU toolchain, or an online RV32I assembler) so you're not
 // hand-encoding instructions.
 //
-// addr       hex     assembly            effect
-00500093   // 0x00  addi x1, x0, 5        x1 = 5
-00700113   // 0x04  addi x2, x0, 7        x2 = 7
-002081b3   // 0x08  add  x3, x1, x2       x3 = x1 + x2 = 12
-40110233   // 0x0c  sub  x4, x2, x1       x4 = x2 - x1 = 2
-00302023   // 0x10  sw   x3, 0(x0)        mem[0] = x3 = 12
-00002283   // 0x14  lw   x5, 0(x0)        x5 = mem[0] = 12
+// instruction   addr   assembly            effect
+   00500093   // 0x00 addi x1, x0, 5     x1 = 5
+   00500113   // 0x04 addi x2, x0, 5     x2 = 5
+   00208463   // 0x08 beq  x1, x2, +8    taken -> skip to 0x10
+   06300193   // 0x0c addi x3, x0, 99    SKIPPED (x3 stays 0)
+   00700213   // 0x10 addi x4, x0, 7     x4 = 7
+   008002ef   // 0x14 jal  x5, +8        x5 = 0x18, jump to 0x1c
+   05800313   // 0x18 addi x6, x0, 88    SKIPPED (x6 stays 0)
+   02a00393   // 0x1c addi x7, x0, 42    x7 = 42
