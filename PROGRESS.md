@@ -159,3 +159,16 @@
 ## Doing
 - Waiting for development board to arrive
 - Perhaps move on to upgrade 
+
+> Day 13 - 2026-10-20
+
+## Done
+- Created a top module `de10_top.v` for wiring physical input and output with all my v files.
+- Synthesised my RTLs into newly bought DE-10 Lite development board with the MAX 10 FPGA chip.
+- Implemented hex to 7seg module, clk divider module to step it down from 50MHz to around 1Hz to display on 7seg
+- Wired a pusb button to reset, another one to shop the chopped top 2 bit of my 32 bit data because I only have 6 7seg display, configured a switch to switch between showing my pc counter or my register data of any address I input through 4 other switches.
+
+
+
+## Doing
+- Moving on to implementing other operations in my RTLs that extends beyond the I subset

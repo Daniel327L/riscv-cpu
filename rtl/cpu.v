@@ -1,6 +1,7 @@
 module cpu(
-input wire clk, reset, //input and output by default is wire
-output [31:0] instruction, pc_out
+	input wire clk, reset, //input and output by default is wire
+	input [4:0] debug_addr,
+	output wire [31:0] instruction, pc_out, debug_data
 );
 
 assign pc_out = pc; 
@@ -55,7 +56,9 @@ reg_file u4 (
 .rd_addr(instruction[11:7]),    
 .rd_data(rd_data), 
 .rs1_data(rs1_data),
-.rs2_data(rs2_data)
+.rs2_data(rs2_data),
+.debug_addr(debug_addr),
+.debug_data(debug_data)
 );
 
 alu_control u5 (

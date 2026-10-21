@@ -2,14 +2,12 @@
 build/
 *.vvp
 *.vcd
+*.bak
 
-# Vivado (Week 3) — keep sources, ignore generated project files
-*.jou
-*.log
-*.str
-.Xil/
-*.cache/
-*.hw/
-*.runs/
-*.sim/
-vivado*.backup*
+# ignore everything Quartus dumps in the FPGA folder...
+FPGA_MAX10/*
+# ...except the source + project files we actually commit
+!FPGA_MAX10/*.v
+!FPGA_MAX10/*.qpf
+!FPGA_MAX10/*.qsf
+!FPGA_MAX10/*.sdc
