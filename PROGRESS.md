@@ -169,6 +169,23 @@
 - Wired a pusb button to reset, another one to shop the chopped top 2 bit of my 32 bit data because I only have 6 7seg display, configured a switch to switch between showing my pc counter or my register data of any address I input through 4 other switches.
 
 
+## Doing
+- Moving on to implementing other operations in my RTLs to fully complete the RISCVI instruction set
+
+
+> Day 14 - 2026-10-25
+
+## Done
+- Completed all branch instruction, jalr, fixed issue with function7 distinction for R-type and I-type
+- Set up risc-v gnu pipeline to automatically turn assembly code into hex for testing
+- Verified output against assembly code
+
+![](Images/Assembly%20code.png)
+*Assembly code to put into the test pipeline*
+
+![](Images/Test%20pipeline%20result.png)
+*CPU testbench generated result, verified against assembly code
 
 ## Doing
-- Moving on to implementing other operations in my RTLs that extends beyond the I subset
+- Moving on to sub-word loads and stores instruction to fully complete RV32I
+- Plan to run a C program (not C++ because the processor dosen't have heap and OS) 

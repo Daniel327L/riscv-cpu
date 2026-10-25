@@ -24,10 +24,13 @@ initial begin
     $dumpfile("tb_cpu.vcd");
     $dumpvars(0, tb_cpu);
     
-    reset = 1;
-    #12 reset = 0;
-    #12 reset = 1; //means 12 ns from this point
-    repeat (10) @(posedge clk); //repeat @(posedge clk) delay 10 times
+    reset = 0;
+    #10 reset = 1;  
+    repeat (40) @(posedge clk); //repeat @(posedge clk) delay 10 times
+    $display("x1=%h  x2=%h  x3=%h  x4=%h",  dut.u4.regs[1],  dut.u4.regs[2],  dut.u4.regs[3],  dut.u4.regs[4]);
+    $display("x8=%h  x9=%h  x10=%h x11=%h", dut.u4.regs[8],  dut.u4.regs[9],  dut.u4.regs[10], dut.u4.regs[11]);
+    $display("x12=%h x13=%h",               dut.u4.regs[12], dut.u4.regs[13]);
+    $display("x14=%h x15=%h x16=%h",        dut.u4.regs[14], dut.u4.regs[15], dut.u4.regs[16]);
     $finish;
     
 end

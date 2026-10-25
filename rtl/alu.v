@@ -16,7 +16,7 @@
 //   4'b0100  XOR              a ^ b
 //   4'b0101  SLL              a << b[4:0]        (shift amount = low 5 bits)
 //   4'b0110  SRL              a >> b[4:0]        (logical, zero-fill)
-//   4'b0111  SRA              a >>> b[4:0]       (arithmetic, sign-fill)
+//   4'b0111  SRA              a >>> b[4:0]       (arithmetic, sign-fill), used for preserving sign for signed number
 //   4'b1000  SLT              (signed)   result = ($signed(a) < $signed(b)) ? 1 : 0
 //   4'b1001  SLTU             (unsigned) result = (a < b) ? 1 : 0
 //

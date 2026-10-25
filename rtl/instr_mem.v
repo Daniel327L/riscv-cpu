@@ -7,13 +7,13 @@
 // 32-bit words. So index it with addr[N:2] (drop the low 2 bits) rather than
 // addr directly -- a classic off-by-4 bug if you forget.
 //
-// `MEM_FILE` defaults to the sample program in test/. Override it from the
+// `MEM_FILE` defaults to the sample program in test/. Override it from The
 // testbench with a defparam or parameter override to run other programs.
 // ---------------------------------------------------------------------------
 
 module instr_mem #(
     parameter DEPTH    = 256,  //256 is a deliberate choice, keep the memory small no need bigger
-    parameter MEM_FILE = "test/program.hex" //parameter runs during compilation, cannot change during runtime
+    parameter MEM_FILE = "test/isa_test.hex" //parameter runs during compilation, cannot change during runtime
 ) (
     input  wire [31:0] addr, //address are written in byte form by the program, each address increment by 4 bytes
     output wire [31:0] instr

@@ -19,10 +19,10 @@ module reg_file (
     input  wire [4:0]  rs2_addr,    //second register address to extract value inside
     input  wire [4:0]  rd_addr,	 //which register to store rd_data
     input  wire [31:0] rd_data,     //values you want to store 
-	 input  wire [4:0]  debug_addr,
+	input  wire [4:0]  debug_addr,
     output wire [31:0] rs1_data,    //first output 
     output wire [31:0] rs2_data,     //second output
-	 output wire [31:0] debug_data
+	output wire [31:0] debug_data
 );
 
     // 32 architectural registers.
@@ -40,6 +40,6 @@ end
 assign rs1_data = (rs1_addr != 5'd0) ? regs[rs1_addr] : 32'b0;  //in RISC-V, address 0 always rep b0 so that 
 assign rs2_data = (rs2_addr != 5'd0) ? regs[rs2_addr] : 32'b0;  //arithemtic operation with 0 is easier to deal with
 
-assign debug_data = regs[debug_addr];
+assign debug_data = (debug_addr != 5'd0) ? regs[debug_addr] : 32'b0 ;
 
 endmodule

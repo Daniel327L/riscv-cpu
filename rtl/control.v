@@ -33,12 +33,13 @@ module control (
     output reg        mem_write,
     output reg        mem_to_reg,
     output reg        branch,
-    output reg        jump,
+    output reg        jal, jalr,
+    output reg        LUI, AUIPC,
     output reg [1:0]  alu_op
 );
 
     always @(*) begin
-        {reg_write, alu_src, mem_read, mem_write, mem_to_reg, branch, jump} = 7'b0;
+        {reg_write, alu_src, mem_read, mem_write, mem_to_reg, branch, jal, jalr, LUI, AUIPC} = '0; //'0 autosize to whatever u have
         alu_op = 2'b0;
         case(opcode)
         7'b0110011: begin //R-type
@@ -68,8 +69,21 @@ module control (
         end
         7'b1101111: begin //J-type
             reg_write = 1'b1;
-            jump = 1'b1;
+            jal = 1'b1;
             alu_op = 2'b0;
+        end
+        7'b1100111: begin //for jalr
+            reg_write = 1'b1;
+            jalr = 1'b1;
+            alu_op = 2'b0;
+        end
+        7'b0110111: begin //LUI - Load upper immediate
+            reg_write = 1'b1;
+            LUI = 1'b1;
+        end
+        7'b0010111: begin //AUIPC - Add upper immediate to PC
+            AUIPC = 1'b1;
+            reg_write = 1'b1;
         end
         endcase
 

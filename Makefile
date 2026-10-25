@@ -20,6 +20,10 @@ RTL := rtl
 TB  := tb
 BUILD := build
 
+RVGCC     := riscv64-unknown-elf-gcc
+RVOBJCOPY := riscv64-unknown-elf-objcopy
+RVFLAGS   := -march=rv32i -mabi=ilp32 -nostdlib -nostartfiles -Ttext=0x0
+
 # All RTL sources (used when elaborating the full CPU).
 RTL_SRCS := $(wildcard $(RTL)/*.v)
 
@@ -54,6 +58,12 @@ wave_%:
 cpu: $(BUILD)
 	$(IVERILOG) $(IFLAGS) -o $(BUILD)/cpu.vvp $(RTL_SRCS)
 	@echo "cpu elaborated OK (all modules compile + connect)"
+	
+hex: $(BUILD)  #Turn assembly into EML (Executable and Linkable file), then binary then hex.
+	$(RVGCC) $(RVFLAGS) -o $(BUILD)/$(PROG).elf test/$(PROG).s
+	$(RVOBJCOPY) -O binary $(BUILD)/$(PROG).elf $(BUILD)/$(PROG).bin
+	python3 scripts/bin2hex.py $(BUILD)/$(PROG).bin > test/$(PROG).hex
+	@echo "wrote test/$(PROG).hex"
 
 clean:
 	rm -rf $(BUILD) *.vcd

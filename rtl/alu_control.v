@@ -26,7 +26,7 @@
 module alu_control (
     input  wire [1:0] alu_op,     // coarse selector from control.v
     input  wire [2:0] funct3,     // instr[14:12]
-    input  wire       funct7_5,   // instr[30]  (distinguishes ADD/SUB, SRL/SRA)
+    input  wire       funct7_5,   // instr[30]  (distinguishes ADD/SUB, SRL/SRA, only for R type)
     output reg  [3:0] alu_ctrl    // fine code consumed by alu.v
 );
 
