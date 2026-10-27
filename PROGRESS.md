@@ -189,3 +189,12 @@
 ## Doing
 - Moving on to sub-word loads and stores instruction to fully complete RV32I
 - Plan to run a C program (not C++ because the processor dosen't have heap and OS) 
+
+> Day 15 - 2026-10-26
+
+## Done
+- Successfully implemented all instructions for base integer instruction set.
+- Verified against assembly code and register output.
+
+## Doing
+- Run a compiled C program

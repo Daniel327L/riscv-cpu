@@ -31,6 +31,28 @@ L4:
     addi  x13, x0, 99       # skipped
 L5: addi  x13, x0, 8        # x13 = 8
 
+    addi x20, x0, 0          # base address
+    lui  x21, 0x12345
+    addi x21, x21, 0x678     # x21 = 0x12345678
+    sw   x21, 0(x20)
+    lw   x22, 0(x20)         # 0x12345678
+    lbu  x23, 0(x20)         # 0x78
+    lbu  x24, 1(x20)         # 0x56
+    lbu  x25, 2(x20)         # 0x34
+    lbu  x26, 3(x20)         # 0x12
+    addi x27, x0, -1         # 0xFFFFFFFF
+    sb   x27, 4(x20)
+    lb   x28, 4(x20)         # 0xFFFFFFFF  (sign)
+    lbu  x29, 4(x20)         # 0x000000FF  (zero)
+    sh   x27, 8(x20)
+    lh   x30, 8(x20)         # 0xFFFFFFFF  (sign)
+    lhu  x31, 8(x20)         # 0x0000FFFF  (zero)
+    sw   x0, 12(x20)
+    addi x19, x0, 0xAB
+    sb   x19, 13(x20)        # byte 1 of word 3
+    lw   x18, 12(x20)        # 0x0000AB00  (placement + neighbors)
+    # moving on
+
     jal   x1, func          # call; x1 = return address
     addi  x10, x0, 7        # x10 = 7 (returned)
     addi  x14, x0, -16     # x14 = 0xFFFFFFF0   ← NEW

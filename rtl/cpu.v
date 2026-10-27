@@ -5,8 +5,13 @@ module cpu(
 );
 
 assign pc_out = pc; 
+
 reg [31:0] pc;
 reg branch_taken;
+reg [31:0] mem_data;
+wire [3:0] byte_enable;
+wire [31:0] write_data;
+
 
 always@(posedge clk) begin
     if(!reset)begin
@@ -37,6 +42,49 @@ always@(*) begin
     end
 end
 
+always@(*) begin
+    mem_data = read_data;
+    if(mem_read) begin
+        case(instruction[14:12])
+            3'b000: case(alu_result[1:0]) //lb - load byte
+                        2'b00: mem_data = {{24{read_data[7]}}, read_data[7:0]};  
+                        2'b01: mem_data = {{24{read_data[15]}}, read_data[15:8]};  
+                        2'b10: mem_data = {{24{read_data[23]}}, read_data[23:16]};  
+                        2'b11: mem_data = {{24{read_data[31]}}, read_data[31:24]};  
+                    endcase
+            3'b001: case(alu_result[1:0]) //lh - load half word
+                        2'b00: mem_data = {{16{read_data[15]}}, read_data[15:0]};  
+                        2'b10: mem_data = {{16{read_data[31]}}, read_data[31:16]};
+                    endcase 
+            3'b010: mem_data = read_data; //lw - load word
+            3'b100: case(alu_result[1:0]) //lbu - unsigned
+                        2'b00: mem_data = {24'b0, read_data[7:0]};
+                        2'b01: mem_data = {24'b0, read_data[15:8]};
+                        2'b10: mem_data = {24'b0, read_data[23:16]};
+                        2'b11: mem_data = {24'b0, read_data[31:24]};
+                    endcase 
+            3'b101: case(alu_result[1:0]) //lhu - unsigned
+                        2'b00: mem_data = {16'b0, read_data[15:0]}; 
+                        2'b10: mem_data = {16'b0, read_data[31:16]}; 
+                    endcase
+        endcase
+    end
+end
+
+assign byte_enable = instruction[14:12] == 3'b010 ? 4'b1111 :
+                     instruction[14:12] == 3'b001 && alu_result [1:0] == 2'b00 ? 4'b0011:
+                     instruction[14:12] == 3'b001 && alu_result [1:0] == 2'b10 ? 4'b1100:
+                     instruction[14:12] == 3'b000 && alu_result [1:0] == 2'b00 ? 4'b0001:
+                     instruction[14:12] == 3'b000 && alu_result [1:0] == 2'b01 ? 4'b0010:
+                     instruction[14:12] == 3'b000 && alu_result [1:0] == 2'b10 ? 4'b0100:
+                     instruction[14:12] == 3'b000 && alu_result [1:0] == 2'b11 ? 4'b1000:
+                     4'b0000;
+    
+assign write_data = byte_enable == 4'b1111 ? rs2_data :
+                    byte_enable == 4'b0011 || byte_enable == 4'b1100 ? {2{rs2_data[15:0]}} :
+                    byte_enable == 4'b0001 || byte_enable == 4'b0010 || byte_enable == 4'b0100 || byte_enable == 4'b1000 ? {4{rs2_data[7:0]}} :
+                    32'b0; 
+                     
 
 instr_mem u1(
 .addr(pc),
@@ -100,19 +148,22 @@ alu u6 (
 );
 
 assign alu_b = alu_src ? immediate : rs2_data; 
-assign rd_data = mem_to_reg ? read_data : 
+assign rd_data = mem_to_reg ? mem_data : 
                  jal || jalr ? pc + 32'd4 : //rd_data is the write back data, and it can store either the alu result or data read from memory
                  LUI ? immediate :
                  AUIPC ? pc + immediate :
                  alu_result; // but if it's jump that the write back is pc + 4; 
 
+
+
 data_mem u7 (
 .clk(clk),
 .mem_read(mem_read),
 .mem_write(mem_write),
-.addr(alu_result), //for lw, alu_result is the address resulted from grabing a rs1_data, force add it with an immediate 
-.write_data(rs2_data), //for sw, rs2_data = value to store in memory, rs1_data + immediate = address of that memory 
-.read_data(read_data) //result from lw 
+.addr(alu_result), //alu_result is the address resulted from grabing a rs1_data, force add it with an immediate 
+.write_data(write_data), //for sw, rs2_data = value to store in memory, rs1_data + immediate = address of that memory 
+.read_data(read_data), //result from lw 
+.byte_enable(byte_enable)
 );
 
 
