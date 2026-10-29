@@ -198,3 +198,14 @@
 
 ## Doing
 - Run a compiled C program
+
+>> Day 16 - 2026-10-28
+
+## Done
+- Successfully ran a compiled C program through riscv-gnu toolchain
+- verifed result against register value
+
+## Doing
+- Can try meatier C progrma, such as algorithm, recursions, etc.
+- Deploy to DE-10 for monitor real time result
+- Pipeline or M-extensions or 
