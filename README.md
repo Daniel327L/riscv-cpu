@@ -1,48 +1,162 @@
-# Single-Cycle RISC-V CPU (RV32I subset)
+# RISC-V RV32I CPU Core
 
-A single-cycle RISC-V processor core in Verilog, verified with self-checking
-testbenches and deployed to an FPGA. Also utilized RISC-V test suite verify my design.
-
----
-
-```
-        +----+   +------------+
-   +--->| PC |-->| instr_mem  |--instr-->+------------------+
-   |    +----+   +------------+          | field breakout   |
-   |      ^                              | opcode,rd,rs1,rs2|
-   |   next-PC mux                       | funct3, funct7   |
-   |   (PC+4 / PC+imm)                   +---+----+----+----+
-   |      ^                                  |    |    |
-   |  take_branch/jump                       v    v    v
-   |      |          +---------+        +----------------+
-   |      |          | control |        |   reg_file     |
-   |      |          +----+----+        | rs1_data rs2_data
-   |      |               |             +----+-------+---+
-   |      |         control signals          |       |
-   |      |                                  |   +---(rs2)
-   |      |          +---------+             |   |    |
-   |      +----imm---| imm_gen |             |   v    v
-   |                 +---------+             |  [alu_src mux]
-   |                     |                   |     |
-   |                     +--------imm------->|     v
-   |                                         |   +-----+
-   |                                       (rs1)-|  ALU |--result--+--> addr
-   |                                             +-----+           |
-   |                                               |zero           v
-   |                                       branch decision   +-----------+
-   |                                                          | data_mem  |
-   |                                                          +-----+-----+
-   |                                                                |read_data
-   |                                          +---------------------+
-   |                                          v
-   |                                    [writeback mux]  (alu_result / mem / pc+4)
-   |                                          |
-   +------------------------------------------+--> reg_file.rd_data
-```
+A single-cycle **RISC-V RV32I** processor implemented from scratch in Verilog — supporting the full base integer instruction set, verified against assembler- and compiler-generated test programs, capable of **running compiled C**, and **deployed to an Intel MAX 10 FPGA**.
 
 ---
 
-### Future Plans:
-- Pipeline it 
-- Add a cache
-- M-extensions / branch detectors 
+## Overview
+
+This is a complete, working implementation of the RISC-V 32-bit base integer ISA (RV32I) as a single-cycle processor. It executes one instruction per clock cycle through a classic five-phase datapath (fetch → decode → execute → memory → write-back), and it has been validated not just on hand-written tests but on **real C programs compiled with GCC** and on **physical hardware**.
+
+The project was built module by module with an emphasis on *verification*: every instruction is exercised by self-checking test programs, and several subtle ISA-encoding bugs were caught and root-caused along the way (see [Bugs Found & Fixed](#bugs-found--fixed)).
+
+**Status:** Full RV32I base ISA implemented and verified · runs compiled C · deployed on FPGA.
+
+---
+
+## Features
+
+- **Full RV32I base integer ISA** (~40 instructions):
+  - R-type arithmetic/logic: `add sub and or xor sll srl sra slt sltu`
+  - I-type immediates: `addi andi ori xori slti sltiu slli srli srai`
+  - Loads: `lw lh lb lhu lbu` (sub-word access with sign/zero extension)
+  - Stores: `sw sh sb` (byte-enable masked writes — no read-modify-write)
+  - Branches: `beq bne blt bge bltu bgeu` (correct signed/unsigned comparison)
+  - Jumps: `jal jalr` (function call/return)
+  - Upper-immediate: `lui auipc`
+- **Harvard architecture** — separate instruction and data memories.
+- **Clean modular datapath** — ALU, two-level ALU control, main control unit, register file, immediate generator, byte-addressable data memory.
+- **Compiler-ready** — runs bare-metal C via the RISC-V GNU toolchain.
+- **FPGA-proven** — synthesized and run on an Intel MAX 10 (DE10-Lite).
+
+---
+
+## Architecture
+
+```
+        ┌─────────┐   ┌──────────┐   ┌─────────┐   ┌──────────┐   ┌───────────┐
+  PC ─▶ │  FETCH  │ ▶ │  DECODE  │ ▶ │ EXECUTE │ ▶ │  MEMORY  │ ▶ │ WRITE-BACK│
+        │instr_mem│   │ control  │   │   ALU   │   │ data_mem │   │  reg_file │
+        └─────────┘   │ reg_file │   │alu_ctrl │   │(byte-en) │   └───────────┘
+                      │ imm_gen  │   └─────────┘   └──────────┘
+                      └──────────┘
+             ▲                                                          │
+             └──────────── next-PC logic (PC+4 / branch / jal / jalr) ──┘
+```
+
+| Module          | Responsibility |
+|-----------------|----------------|
+| `cpu.v`         | Top-level datapath: wires the stages together, PC/next-PC logic, branch decision, load extend, store byte-enable |
+| `alu.v`         | 32-bit ALU (add/sub/logic/shift/compare), produces result + zero flag |
+| `alu_control.v` | Decodes coarse `alu_op` + funct3/funct7 into the fine ALU operation |
+| `control.v`     | Main control unit: opcode → datapath control signals |
+| `imm_gen.v`     | Immediate generator: unscrambles I/S/B/U/J immediates and sign-extends |
+| `reg_file.v`    | 32×32 register file, 2 async read ports + 1 sync write port, `x0` hardwired to 0 |
+| `instr_mem.v`   | Instruction memory (word-addressed, loaded via `$readmemh`) |
+| `data_mem.v`    | Data memory with per-byte write enables for sub-word stores |
+
+~530 lines of RTL across 8 modules.
+
+---
+
+## Verification & Testing
+
+Verification was central to this project. Rather than eyeballing waveforms, every instruction is checked against **expected register/memory state**, and test programs are generated by a real toolchain so the machine code is guaranteed correct.
+
+- **Self-checking test programs** — assembly tests (`test/*.s`) assembled by the RISC-V GNU toolchain into hex, run in simulation, with final register values compared to hand-computed expectations. A "no register should ever equal 99" convention flags any mis-taken branch instantly.
+- **Toolchain-driven** — a `make hex PROG=<name>` flow assembles `.s` → ELF → raw binary → `$readmemh` hex, removing hand-encoding as a source of error.
+- **C execution** — compiled C programs are run end-to-end (see below), exercising the full ISA in realistic, compiler-generated combinations (stack frames, function calls, loops, mixed-size memory access).
+- **Per-module testbenches** — individual modules (ALU, immediate generator, memories, etc.) have their own directed testbenches under `tb/`.
+
+Simulated with **Icarus Verilog**; waveforms inspected in **GTKWave**.
+
+---
+
+## Running Compiled C
+
+The core runs bare-metal C compiled with `riscv64-unknown-elf-gcc`:
+
+```c
+int main(void) {
+    int sum = 0;
+    for (int i = 1; i <= 10; i++) sum += i;
+    return sum;              // 55
+}
+```
+
+A minimal startup stub (`start.s`) sets up the stack pointer, calls `main`, and halts; the result is returned per the RISC-V ABI in `a0` (x10). Running the above on the core produces **`a0 = 0x37 = 55`**, confirming correct function-call ABI, stack-frame setup, loop control flow, and stack-based loads/stores.
+
+```bash
+riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -nostdlib -nostartfiles -Ttext=0x0 -O0 \
+    -o build/prog.elf test/start.s test/main.c
+riscv64-unknown-elf-objcopy -O binary build/prog.elf build/prog.bin
+python3 scripts/bin2hex.py build/prog.bin > test/prog.hex
+make test_cpu
+```
+
+---
+
+## FPGA Deployment
+
+The core is synthesized and run on a **Terasic DE10-Lite** (Intel MAX 10, `10M50DAF484C7G`) in **Quartus Prime**:
+
+- A **clock divider** slows the 50 MHz oscillator to a few Hz so instruction execution is visible.
+- The **program counter and register values** are displayed on the six 7-segment displays via a hex-to-7-seg decoder.
+- A **switch-selectable register inspector** lets any of the 32 registers be read out on the board for live debugging (`SW[4:0]` selects the register; a key pages to the high byte).
+- `KEY[0]` serves as reset (active-low, matching the core's convention).
+
+Quartus project and pin/timing constraints live in `FPGA_MAX10/`.
+
+---
+
+## Project Structure
+
+```
+riscv-cpu/
+├── rtl/            # RTL source (cpu, alu, alu_control, control,
+│                   #   imm_gen, reg_file, instr_mem, data_mem)
+├── tb/             # Testbenches (per-module + full CPU)
+├── test/           # Assembly tests, C programs, startup stub, generated hex
+├── scripts/        # bin2hex.py (binary → $readmemh hex converter)
+├── FPGA_MAX10/     # Quartus project: wrapper, clock divider, 7-seg, .qsf/.sdc
+├── docs/           # Control-signal tables, development log
+└── Makefile        # Simulation + hex-generation targets
+```
+
+### Build & Simulate
+
+```bash
+make test_cpu          # compile + run the full-CPU testbench
+make test_<module>     # run a single module's testbench (e.g. make test_alu)
+make hex PROG=<name>   # assemble test/<name>.s into test/<name>.hex
+make wave_<name>       # open a waveform in GTKWave
+```
+
+**Requirements:** Icarus Verilog, GTKWave, the RISC-V GNU toolchain (`riscv64-unknown-elf-*`), Python 3. FPGA flow additionally needs Intel Quartus Prime (Lite).
+
+---
+
+## Bugs Found & Fixed
+
+A few of the subtler issues caught through the self-checking test flow — each a real ISA-encoding or RTL pitfall:
+
+- **`addi` silently decoded as `sub`.** The R-type funct7 bit (`instr[30]`) was being used to pick add-vs-subtract for *all* ALU ops — but for I-type `addi`, that bit is part of the immediate. Any `addi` with bit 30 set (e.g. a negative immediate) was computing a subtraction. Fixed by gating the funct7 decode to R-type (and I-type shifts) only.
+- **Signed vs. unsigned branches swapped.** `blt/bge` (signed) and `bltu/bgeu` (unsigned) had their `$signed()` casts reversed, so e.g. `blt` compared `0xFFFFFFFF` as a large positive instead of −1.
+- **Immediate truncation on `lui`.** A shift inside a concatenation (`{instr[31:12] << 12}`) was self-determined to 20 bits and dropped the upper nibbles; fixed with explicit concatenation `{instr[31:12], 12'b0}`.
+- **Implicit 1-bit wires.** Undeclared signals (`imm`, `alu_result`, a too-narrow debug address) silently became 1-bit nets, truncating 32-bit values — caught by comparing expected vs. actual register contents.
+
+---
+
+## Roadmap
+
+- [ ] Pipeline the core (5-stage) with hazard detection and forwarding
+- [ ] Add I-/D-caches and measure CPI improvement on benchmarks
+- [ ] Branch prediction
+- [ ] Run the official `riscv-tests` ISA suite
+- [ ] `M` extension (multiply/divide)
+
+---
+
+## Tools
+
+Verilog · Icarus Verilog · GTKWave · RISC-V GNU Toolchain (gcc/as/objcopy) · Intel Quartus Prime · Terasic DE10-Lite (Intel MAX 10)
