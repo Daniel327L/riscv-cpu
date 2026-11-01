@@ -39,7 +39,7 @@ module control (
 );
 
     always @(*) begin
-        {reg_write, alu_src, mem_read, mem_write, mem_to_reg, branch, jal, jalr, LUI, AUIPC} = '0; //'0 autosize to whatever u have
+        {reg_write, alu_src, mem_read, mem_write, mem_to_reg, branch, jal, jalr, LUI, AUIPC} = 0; //can't do '0 because it's SV feature
         alu_op = 2'b0;
         case(opcode)
         7'b0110011: begin //R-type

@@ -209,3 +209,17 @@
 - Can try meatier C progrma, such as algorithm, recursions, etc.
 - Deploy to DE-10 for monitor real time result
 - Pipeline or M-extensions or 
+
+>> Day 17 - 2026-11-01
+
+## Done
+- Deployed newer version to DE-10 and captured flow and timing result
+
+![](Images/Flow%20summary.png)
+*Flow summary*
+
+![](Images/Timing%20analyzes.png)
+*Timing analyzes*
+
+## Doing
+- Same as last time
