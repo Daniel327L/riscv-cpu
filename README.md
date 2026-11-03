@@ -74,8 +74,8 @@ Project layout: `rtl/` (RTL) · `tb/` (testbenches) · `test/` (programs + hex) 
 
 ## Roadmap
 
-- [ ] 5-stage pipeline — forwarding, hazard detection, stalls *(in progress)*
-- [ ] SystemVerilog migration
+- [ ] SystemVerilog migration — convert the base to SV *(foundation for the pipeline)*
+- [ ] 5-stage pipeline — forwarding, hazard detection, stalls (written in SV)
 - [ ] Caches + branch prediction, benchmarked
 - [ ] Official `riscv-tests` ISA suite
 
