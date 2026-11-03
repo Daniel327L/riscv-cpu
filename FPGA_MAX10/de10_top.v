@@ -57,7 +57,7 @@ module de10_top (
 );
 
 cpu u1(
-	.clk(clk_dived),
+	.clk(MAX10_CLK1_50), //use clk_dived for deployment, use 50MHz clk for simulation and finding hardware constraints
 	.reset(KEY[0]), //push buttons are active low so is the reset mechanism I designed.
 	.instruction(instruction),
 	.pc_out(pc_debug),
