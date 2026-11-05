@@ -223,3 +223,11 @@
 
 ## Doing
 - Same as last time
+
+>> Day 18 - 2026-11-04
+
+## Done
+- Updated few moduels to SV, learned about enum, structs, import package, etc.
+
+## Doing
+- Continue to convert all modules into SV before pipelining.

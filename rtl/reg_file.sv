@@ -13,24 +13,23 @@
 // ---------------------------------------------------------------------------
 
 module reg_file (
-    input  wire        clk,    
-    input  wire        we,          // write enable
-    input  wire [4:0]  rs1_addr,    //first  register address to extract value inside
-    input  wire [4:0]  rs2_addr,    //second register address to extract value inside
-    input  wire [4:0]  rd_addr,	 //which register to store rd_data
-    input  wire [31:0] rd_data,     //values you want to store 
-	input  wire [4:0]  debug_addr,
-    output wire [31:0] rs1_data,    //first output 
-    output wire [31:0] rs2_data,     //second output
-	output wire [31:0] debug_data
+    input  logic        clk,    
+    input  logic        we,          // write enable
+    input  logic [4:0]  rs1_addr,    //first  register address to extract value inside
+    input  logic [4:0]  rs2_addr,    //second register address to extract value inside
+    input  logic [4:0]  rd_addr,	 //which register to store rd_data
+    input  logic [31:0] rd_data,     //values you want to store 
+	input  logic [4:0]  debug_addr,
+    output logic [31:0] rs1_data,    //first output 
+    output logic [31:0] rs2_data,     //second output
+	output logic [31:0] debug_data
 );
 
     // 32 architectural registers.
-    reg [31:0] regs [31:0]; //reg type array consisting of elemenents with 32 bits width (left), 32 element in total (right)
+    logic [31:0] regs [31:0]; //reg type array consisting of elemenents with 32 bits width (left), 32 element in total (right)
                             //default as unkowns (X) by Verilog 
 
-always @(posedge clk) begin
-
+always_ff@(clk) begin 
     if(we && rd_addr != 5'd0) begin
         regs[rd_addr] <= rd_data;
     end

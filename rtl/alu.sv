@@ -24,16 +24,16 @@
 // ---------------------------------------------------------------------------
 
 module alu #(
-    parameter WIDTH = 32
+    parameter int WIDTH = 32
 ) (
-    input  wire [WIDTH-1:0] a,
-    input  wire [WIDTH-1:0] b,
-    input  wire [3:0]       alu_op,
-    output reg  [WIDTH-1:0] result,
-    output wire             zero
+    input  logic [WIDTH-1:0] a,
+    input  logic [WIDTH-1:0] b,
+    input  logic [3:0]       alu_op,
+    output logic  [WIDTH-1:0] result,
+    output logic             zero
 );
 
-always @(*) begin //combinational, level sensitive like latches
+always_comb begin //combinational, level sensitive like latches
     case(alu_op) //parallel and faster than just if-else
         4'b0000: result = a+b; //block assignment since it's combinational
         4'b0001: result = a-b;
@@ -43,13 +43,12 @@ always @(*) begin //combinational, level sensitive like latches
         4'b0101: result = a<<b[4:0]; //can only shift 32 bits at most
         4'b0110: result = a>>b[4:0];
         4'b0111: result = $signed(a)>>>b[4:0]; //fill vacated bits with the sign bits
-        4'b1000: result = $signed(a) < $signed(b) ? 32'd1 : 32'd0; //32'd mactches wdith of result, d for decimal  
-        4'b1001: result = a < b ? 32'd1 : 32'd0; 
-        default: result = {WIDTH{1'b0}}; //repeat 1'b0 by WIDTH times, need both bracket to avoid syntax error
+        4'b1000: result = $signed(a) < $signed(b) ? '1 : '0; //32'd mactches wdith of result, d for decimal  
+        4'b1001: result = a < b ? '1 : '0; 
+        default: result = '0; //automatically sized 
     endcase
-
 end
 
-    assign zero = (result == 0);
+    assign zero = (result == '0);
 
 endmodule
