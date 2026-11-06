@@ -15,11 +15,11 @@ module instr_mem #(
     parameter DEPTH    = 256,  //256 is a deliberate choice, keep the memory small no need bigger
     parameter MEM_FILE = "test/prog.hex" //parameter runs during compilation, cannot change during runtime
 ) (
-    input  wire [31:0] addr, //address are written in byte form by the program, each address increment by 4 bytes
-    output wire [31:0] instr
+    input  logic [31:0] addr, //address are written in byte form by the program, each address increment by 4 bytes
+    output logic [31:0] instr
 );
 
-    reg [31:0] mem [0:DEPTH-1]; //mem is our actual memory, up to 256 instructions storing capability. 
+    logic [31:0] mem [0:DEPTH-1]; //mem is our actual memory, up to 256 instructions storing capability. 
 
     initial begin
         $readmemh(MEM_FILE, mem); //read each line of in MEM_FILE as hex (our instruction in hex), and put them into array slots in mem.

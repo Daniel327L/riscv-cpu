@@ -26,4 +26,23 @@ package riscv_pkg;
         logic [1:0]  alu_op;   
     } control_s;
 
+    typedef enum logic [1:0] {
+        aluop_add = 2'b00,
+        aluop_sub = 2'b01,
+        aluop_r = 2'b10
+    } aluop_e;
+
+    typedef enum logic[3:0] { 
+        alu_add = 4'b0000,
+        alu_sub = 4'b0001,
+        alu_and = 4'b0010,
+        alu_or = 4'b0011,
+        alu_xor = 4'b0100,
+        alu_sll = 4'b0101,
+        alu_srl = 4'b0110,
+        alu_sra = 4'b0111,
+        alu_slt = 4'b1000,
+        alu_sltu = 4'b1001
+    } alu_e;
+
 endpackage

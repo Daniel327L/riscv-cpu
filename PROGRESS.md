@@ -231,3 +231,12 @@
 
 ## Doing
 - Continue to convert all modules into SV before pipelining.
+
+>> Day 19 - 2026-11-05
+
+## Done
+- Successfully migrated my single cycle RV32I from verilog to SV.
+- Compiled and ran the C program, got the same result in the end, refer to Day 14 testbench result.
+
+## Doing
+- Moving on to actually pipelining the RV32I.

@@ -27,9 +27,9 @@ module reg_file (
 
     // 32 architectural registers.
     logic [31:0] regs [31:0]; //reg type array consisting of elemenents with 32 bits width (left), 32 element in total (right)
-                            //default as unkowns (X) by Verilog 
+                            
 
-always_ff@(clk) begin 
+always_ff@(posedge clk) begin 
     if(we && rd_addr != 5'd0) begin
         regs[rd_addr] <= rd_data;
     end

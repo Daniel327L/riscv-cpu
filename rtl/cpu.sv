@@ -1,26 +1,26 @@
-module cpu(
-	input wire clk, reset, //input and output by default is wire
-	input [4:0] debug_addr,
-	output wire [31:0] instruction, pc_out, debug_data
+module cpu import riscv_pkg::*;(
+	input logic clk, reset, //input and output by default is wire
+	input logic [4:0] debug_addr,
+	output logic [31:0] instruction, pc_out, debug_data
 );
 
 assign pc_out = pc; 
 
-reg [31:0] pc;
-reg branch_taken;
-reg [31:0] mem_data;
-wire [3:0] byte_enable;
-wire [31:0] write_data;
+logic [31:0] pc;
+logic branch_taken;
+logic [31:0] mem_data;
+logic [3:0] byte_enable;
+logic [31:0] write_data;
 
 
-always@(posedge clk) begin
+always_ff@(posedge clk) begin
     if(!reset)begin
         pc <= 32'd0; 
     end
-    else if ((branch_taken) || jal )  begin
+    else if ((branch_taken) || ctrl.jal )  begin
         pc <= pc + immediate;
     end
-    else if (jalr) begin
+    else if (ctrl.jalr) begin
         pc <= (rs1_data + immediate) & ~32'b1;
     end
     else begin
@@ -28,9 +28,9 @@ always@(posedge clk) begin
     end
 end 
 
-always@(*) begin
+always_comb begin
     branch_taken = 1'b0;
-    if(branch)begin
+    if(ctrl.branch)begin
         case(instruction[14:12])
             3'b000: branch_taken = zero; //beq
             3'b001: branch_taken = !zero; //bne
@@ -42,9 +42,9 @@ always@(*) begin
     end
 end
 
-always@(*) begin
+always_comb begin
     mem_data = read_data;
-    if(mem_read) begin
+    if(ctrl.mem_read) begin
         case(instruction[14:12])
             3'b000: case(alu_result[1:0]) //lb - load byte
                         2'b00: mem_data = {{24{read_data[7]}}, read_data[7:0]};  
@@ -91,13 +91,19 @@ instr_mem u1(
 .instr(instruction)
 );
 
-wire [31:0] immediate, rd_data, rs1_data, rs2_data, alu_b, alu_result, read_data;
-wire reg_write, alu_src, mem_read, mem_write, mem_to_reg, branch, jal, zero, jalr, LUI, AUIPC;
-wire [1:0] alu_op;
-wire [3:0] finer_alu_op;
-wire R_type = (instruction[6:0] == 7'b0110011);
-wire I_type_sr = ((instruction[6:0] == 7'b0010011) && (instruction[14:12] == 3'b101)); //special case for I type alu for SRLI or SRAI
-wire function7_5 = R_type || I_type_sr ? instruction[30] : 1'b0;
+logic [31:0] immediate, rd_data, rs1_data, rs2_data, alu_b, alu_result, read_data;
+logic zero;
+control_s ctrl;
+opcode_e opcode;
+alu_e alu_sel;
+
+
+logic R_type, I_type_sr, function7_5;
+assign R_type = (opcode == op_r);
+assign I_type_sr = ((opcode == op_i) && (instruction[14:12] == 3'b101)); //special case for I type alu for SRLI or SRAI
+assign function7_5 = R_type || I_type_sr ? instruction[30] : 1'b0;
+
+assign opcode = opcode_e'(instruction[6:0]);
 
 imm_gen u2 (
 .instr(instruction),
@@ -105,23 +111,13 @@ imm_gen u2 (
 );
 
 control u3 (
-.opcode(instruction[6:0]),         
-.reg_write(reg_write),
-.alu_src(alu_src),
-.mem_read(mem_read),
-.mem_write(mem_write),
-.mem_to_reg(mem_to_reg),
-.branch(branch),
-.jal(jal),
-.jalr(jalr),
-.LUI(LUI),
-.AUIPC(AUIPC),
-.alu_op(alu_op)
+.opcode(opcode),         
+.ctrl(ctrl)
 );
 
 reg_file u4 (
 .clk(clk),    
-.we(reg_write),          
+.we(ctrl.reg_write),          
 .rs1_addr(instruction[19:15]),    
 .rs2_addr(instruction[24:20]),    
 .rd_addr(instruction[11:7]),    
@@ -133,33 +129,33 @@ reg_file u4 (
 );
 
 alu_control u5 (
-.alu_op(alu_op),
+.alu_op(ctrl.alu_op),
 .funct3(instruction[14:12]),
 .funct7_5(function7_5),
-.alu_ctrl(finer_alu_op)
+.alu(alu_sel)
 );
 
 alu u6 (
-.alu_op(finer_alu_op),
+.alu_op(alu_sel),
 .a(rs1_data),
 .b(alu_b),
 .result(alu_result),
 .zero(zero)
 );
 
-assign alu_b = alu_src ? immediate : rs2_data; 
-assign rd_data = mem_to_reg ? mem_data : 
-                 jal || jalr ? pc + 32'd4 : //rd_data is the write back data, and it can store either the alu result or data read from memory
-                 LUI ? immediate :
-                 AUIPC ? pc + immediate :
+assign alu_b = ctrl.alu_src ? immediate : rs2_data; 
+assign rd_data = ctrl.mem_to_reg ? mem_data : 
+                 ctrl.jal || ctrl.jalr ? pc + 32'd4 : //rd_data is the write back data, and it can store either the alu result or data read from memory
+                 ctrl.LUI ? immediate :
+                 ctrl.AUIPC ? pc + immediate :
                  alu_result; // but if it's jump that the write back is pc + 4; 
 
 
 
 data_mem u7 (
 .clk(clk),
-.mem_read(mem_read),
-.mem_write(mem_write),
+.mem_read(ctrl.mem_read),
+.mem_write(ctrl.mem_write),
 .addr(alu_result), //alu_result is the address resulted from grabing a rs1_data, force add it with an immediate 
 .write_data(write_data), //for sw, rs2_data = value to store in memory, rs1_data + immediate = address of that memory 
 .read_data(read_data), //result from lw 

@@ -33,49 +33,49 @@ module control import riscv_pkg::*; ( //import the packge and use * to include w
     always_comb begin
         ctrl = '0;
         case(opcode)
-        op_r: begin //R-type
-            ctrl.reg_write = 1'b1;
-            ctrl.alu_op = 2'b10;
-        end
-        op_i: begin //I-type alu
-            ctrl.reg_write = 1'b1;
-            ctrl.alu_src = 1'b1;
-            ctrl.alu_op = 2'b10;
-        end
-        op_load: begin //I-type load
-            ctrl.reg_write = 1'b1;
-            ctrl.alu_src = 1'b1;
-            ctrl.mem_read = 1'b1;
-            ctrl.mem_to_reg = 1'b1;
-            ctrl.alu_op = 2'b0;
-        end
-        op_store: begin //S-type
-            ctrl.alu_src = 1'b1;
-            ctrl.mem_write = 1'b1;
-            ctrl.alu_op = 2'b0;
-        end
-        op_branch: begin //B-type
-            ctrl.branch = 1'b1;
-            ctrl.alu_op = 2'b01;
-        end
-        op_jal: begin //J-type
-            ctrl.reg_write = 1'b1;
-            ctrl.jal = 1'b1;
-            ctrl.alu_op = 2'b0;
-        end
-        op_jalr: begin //for jalr
-            ctrl.reg_write = 1'b1;
-            ctrl.jalr = 1'b1;
-            ctrl.alu_op = 2'b0;
-        end
-        op_LUI: begin //LUI - Load upper immediate
-            ctrl.reg_write = 1'b1;
-            ctrl.LUI = 1'b1;
-        end
-        op_AUIPC: begin //AUIPC - Add upper immediate to PC
-            ctrl.AUIPC = 1'b1;
-            ctrl.reg_write = 1'b1;
-        end
+            op_r: begin //R-type
+                ctrl.reg_write = 1'b1;
+                ctrl.alu_op = aluop_r;
+            end
+            op_i: begin //I-type alu
+                ctrl.reg_write = 1'b1;
+                ctrl.alu_src = 1'b1;
+                ctrl.alu_op = aluop_r;
+            end
+            op_load: begin //I-type load
+                ctrl.reg_write = 1'b1;
+                ctrl.alu_src = 1'b1;
+                ctrl.mem_read = 1'b1;
+                ctrl.mem_to_reg = 1'b1;
+                ctrl.alu_op = aluop_add;
+            end
+            op_store: begin //S-type
+                ctrl.alu_src = 1'b1;
+                ctrl.mem_write = 1'b1;
+                ctrl.alu_op = aluop_add;
+            end
+            op_branch: begin //B-type
+                ctrl.branch = 1'b1;
+                ctrl.alu_op = aluop_sub;
+            end
+            op_jal: begin //J-type
+                ctrl.reg_write = 1'b1;
+                ctrl.jal = 1'b1;
+                ctrl.alu_op = aluop_add;
+            end
+            op_jalr: begin //for jalr
+                ctrl.reg_write = 1'b1;
+                ctrl.jalr = 1'b1;
+                ctrl.alu_op = aluop_add;
+            end
+            op_LUI: begin //LUI - Load upper immediate
+                ctrl.reg_write = 1'b1;
+                ctrl.LUI = 1'b1;
+            end
+            op_AUIPC: begin //AUIPC - Add upper immediate to PC
+                ctrl.AUIPC = 1'b1;
+                ctrl.reg_write = 1'b1;
+            end
         endcase
 
     end

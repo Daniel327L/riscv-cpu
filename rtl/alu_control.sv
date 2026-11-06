@@ -23,33 +23,33 @@
 //   3'b111   AND
 // ---------------------------------------------------------------------------
 
-module alu_control (
-    input  wire [1:0] alu_op,     // coarse selector from control.v
-    input  wire [2:0] funct3,     // instr[14:12]
-    input  wire       funct7_5,   // instr[30]  (distinguishes ADD/SUB, SRL/SRA, only for R type)
-    output reg  [3:0] alu_ctrl    // fine code consumed by alu.v
+module alu_control import riscv_pkg::*;(
+    input  aluop_e alu_op,     // coarse selector from control.v
+    input  logic [2:0] funct3,     // instr[14:12]
+    input  logic       funct7_5,   // instr[30]  (distinguishes ADD/SUB, SRL/SRA, only for R type)
+    output alu_e alu    // fine code consumed by alu.v
 );
 
-always@(*) begin
-    alu_ctrl = 4'b0;
+always_comb begin
+    alu = alu_add;
     case(alu_op)
-        2'b00: alu_ctrl = 4'b0;
-        2'b01: alu_ctrl = 4'b1;
-        2'b10: case(funct3) //funct3 code assignment is fixed by RISC-V
+        aluop_add: alu = alu_add;
+        aluop_sub: alu = alu_sub;
+        aluop_r: case(funct3) //funct3 code assignment is fixed by RISC-V
                3'b000: case(funct7_5)
-                       1'b0: alu_ctrl = 4'b0;
-                       1'b1: alu_ctrl = 4'b1;
+                       1'b0: alu = alu_add;
+                       1'b1: alu = alu_sub;
                        endcase 
-               3'b001: alu_ctrl = 4'b101;
-               3'b010: alu_ctrl = 4'b1000;
-               3'b011: alu_ctrl = 4'b1001;
-               3'b100: alu_ctrl = 4'b100;
+               3'b001: alu = alu_sll;
+               3'b010: alu = alu_slt;
+               3'b011: alu = alu_sltu;
+               3'b100: alu = alu_xor;
                3'b101: case(funct7_5)
-                       1'b0: alu_ctrl = 4'b110;
-                       1'b1: alu_ctrl = 4'b111;
+                       1'b0: alu = alu_srl;
+                       1'b1: alu = alu_sra;
                        endcase
-               3'b110: alu_ctrl = 4'b11;
-               3'b111: alu_ctrl = 4'b10;
+               3'b110: alu = alu_or;
+               3'b111: alu = alu_and;
                endcase
     endcase
 end

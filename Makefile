@@ -25,7 +25,7 @@ RVOBJCOPY := riscv64-unknown-elf-objcopy
 RVFLAGS   := -march=rv32i -mabi=ilp32 -nostdlib -nostartfiles -Ttext=0x0
 
 # All RTL sources (used when elaborating the full CPU).
-RTL_SRCS := $(wildcard $(RTL)/*.v)
+RTL_SRCS := $(RTL)/riscv_pkg.sv $(filter-out $(RTL)/riscv_pkg.sv,$(wildcard $(RTL)/*.sv))
 
 .PHONY: all clean cpu
 all: test_alu
@@ -39,11 +39,11 @@ $(BUILD):
 # For modules with dependencies (e.g. the full cpu), add them explicitly below.
 # ---------------------------------------------------------------------------
 test_%: $(BUILD)
-	$(IVERILOG) $(IFLAGS) -o $(BUILD)/$*.vvp $(TB)/tb_$*.v $(RTL)/$*.v
+	$(IVERILOG) $(IFLAGS) -o $(BUILD)/$*.vvp $(TB)/tb_$*.sv $(RTL)/$*.sv
 	$(VVP) $(BUILD)/$*.vvp
 	
 test_cpu:  #because cpu module needs to instantiate all other 8 modules, so need special make command
-	iverilog -g2012 -Wall -o build/cpu.vvp tb/tb_cpu.v rtl/*.v
+	$(IVERILOG) $(IFLAGS) -o $(BUILD)/cpu.vvp $(TB)/tb_cpu.v $(RTL_SRCS)
 	vvp build/cpu.vvp
 
 # Open the waveform a test produced. Assumes the tb dumps tb_<name>.vcd.

@@ -12,22 +12,20 @@
 module data_mem #(
     parameter DEPTH = 256                 //256 is a deliberate choice, keep the memory small no need bigger
 ) (
-    input  wire        clk,
-    input  wire        mem_read,
-    input  wire        mem_write,
-    input  wire [3:0]  byte_enable,
-    input  wire [31:0] addr,
-    input  wire [31:0] write_data,
-    output wire [31:0] read_data
+    input  logic        clk,
+    input  logic        mem_read,
+    input  logic        mem_write,
+    input  logic [3:0]  byte_enable,
+    input  logic [31:0] addr,
+    input  logic [31:0] write_data,
+    output logic [31:0] read_data
 );
 
-    integer i;
+    logic [31:0] mem [0:DEPTH-1];
 
-    reg [31:0] mem [0:DEPTH-1];
-
-    always@(posedge clk) begin  //storing must be syncrhonized 
+    always_ff@(posedge clk) begin  //storing must be syncrhonized 
         if(mem_write) begin
-            for( i = 0; i < 4; i = i + 1) begin
+            for(int i = 0; i < 4; ++i) begin
                 if(byte_enable[i]) begin
                 mem[addr[9:2]][i*8 +: 8] <= write_data[i*8 +: 8];
                 end
@@ -35,10 +33,10 @@ module data_mem #(
         end
     end
 
-    assign read_data = mem_read ? mem[addr[9:2]] : 32'b0; //simple logic for reading
+    assign read_data = mem_read ? mem[addr[9:2]] : '0; //simple logic for reading
  
     initial begin  //initialize all data as 0 
-    for(i = 0; i < DEPTH; i = i + 1)  
+    for(int i = 0; i < DEPTH; ++i)  
         mem[i] = 32'b0;
     end
 
