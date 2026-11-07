@@ -1,32 +1,13 @@
 module cpu import riscv_pkg::*;(
 	input logic clk, reset, //input and output by default is wire
 	input logic [4:0] debug_addr,
-	output logic [31:0] instruction, pc_out, debug_data
+	output logic [31:0] pc_out, debug_data
 );
 
-assign pc_out = pc; 
-
-logic [31:0] pc;
 logic branch_taken;
 logic [31:0] mem_data;
 logic [3:0] byte_enable;
 logic [31:0] write_data;
-
-
-always_ff@(posedge clk) begin
-    if(!reset)begin
-        pc <= 32'd0; 
-    end
-    else if ((branch_taken) || ctrl.jal )  begin
-        pc <= pc + immediate;
-    end
-    else if (ctrl.jalr) begin
-        pc <= (rs1_data + immediate) & ~32'b1;
-    end
-    else begin
-        pc <= pc + 32'd4; 
-    end
-end 
 
 always_comb begin
     branch_taken = 1'b0;
@@ -86,27 +67,53 @@ assign write_data = byte_enable == 4'b1111 ? rs2_data :
                     32'b0; 
                      
 
-instr_mem u1(
+// ========================== IF stage =====================================================
+
+logic [31:0] pc, if_instruction;
+
+instr_mem u1(   //IF stages outputs pc, instruction and pc_plus4 to go into ID stage.
 .addr(pc),
-.instr(instruction)
+.instr(if_instruction)
 );
 
-logic [31:0] immediate, rd_data, rs1_data, rs2_data, alu_b, alu_result, read_data;
-logic zero;
+always_ff@(posedge clk) begin
+    if(!reset)begin
+        pc <= '0; 
+    end
+    else begin //need to add branch and jump operation in the future 
+        pc <= pc + 32'd4; 
+    end
+end
+
+//============================ IF -> ID transition ===========================================
+
+if_id_s if_id;
+
+always_ff@(posedge clk) begin        
+    if(!reset) begin
+        if_id <= '0;
+    end else begin
+        if_id.pc <= pc;
+        if_id.instruction <= if_instruction;
+        if_id.pc_plus4 <= pc + 32'd4;
+    end
+end
+
+//============================ ID stage ===========================================
+
+logic [31:0] immediate, rs1_data, rs2_data;
 control_s ctrl;
 opcode_e opcode;
-alu_e alu_sel;
-
 
 logic R_type, I_type_sr, function7_5;
 assign R_type = (opcode == op_r);
-assign I_type_sr = ((opcode == op_i) && (instruction[14:12] == 3'b101)); //special case for I type alu for SRLI or SRAI
-assign function7_5 = R_type || I_type_sr ? instruction[30] : 1'b0;
+assign I_type_sr = ((opcode == op_i) && (if_id.instruction[14:12] == 3'b101)); //special case for I type alu for SRLI or SRAI
+assign function7_5 = R_type || I_type_sr ? if_id.instruction[30] : 1'b0;
 
-assign opcode = opcode_e'(instruction[6:0]);
+assign opcode = opcode_e'(if_id.instruction[6:0]);
 
 imm_gen u2 (
-.instr(instruction),
+.instr(if_id.instruction),
 .imm(immediate)
 );
 
@@ -116,17 +123,49 @@ control u3 (
 );
 
 reg_file u4 (
-.clk(clk),    
-.we(ctrl.reg_write),          
-.rs1_addr(instruction[19:15]),    
-.rs2_addr(instruction[24:20]),    
-.rd_addr(instruction[11:7]),    
-.rd_data(rd_data), 
+.clk(clk),        
+//Read section      
+.rs1_addr(if_id.instruction[19:15]),    
+.rs2_addr(if_id.instruction[24:20]),         
 .rs1_data(rs1_data),
 .rs2_data(rs2_data),
-.debug_addr(debug_addr),
-.debug_data(debug_data)
+//write section
+.we(),  //ctrl.reg_write
+.rd_addr(), //rd_addr = instruction[11:7]
+.rd_data(), //rd_data
+//debug section
+.debug_addr(debug_addr), //decide whether or not need this 
+.debug_data(debug_data) //decide whether or not need this 
 );
+
+//============================ ID -> EX transition ===================================================================
+
+id_ex_s id_ex;
+
+always_ff@(posedge clk) begin
+    if(!reset)begin
+        id_ex <= '0; 
+    end
+    else begin
+        id_ex.immediate <= immediate;
+        id_ex.rs1_addr <= if_id.instruction[19:15];  //we keep the address for forwarding in the future
+        id_ex.rs2_addr <= if_id.instruction[24:20]; //Forwarding = grab result before it's written in reg to use it immediately
+        id_ex.rd_addr <= if_id.instruction[11:7]; //ride all the way down to WB
+        id_ex.rs1_data <= rs1_data;
+        id_ex.rs2_data <= rs2_data; 
+        id_ex.funct3 <= if_id.instruction[14:12];
+        id_ex.funct7_5 <= function7_5;
+        id_ex.pc <= if_id.pc;
+        id_ex.pc_plus4 <= if_id.pc_plus4;
+        id_ex.ctrl <= ctrl;
+    end
+end
+
+//================================ EX stage ===============================================================================
+
+logic [31:0] alu_b, alu_result, read_data;
+logic zero;
+alu_e alu_sel;
 
 alu_control u5 (
 .alu_op(ctrl.alu_op),

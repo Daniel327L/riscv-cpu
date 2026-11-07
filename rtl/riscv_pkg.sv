@@ -23,7 +23,7 @@ package riscv_pkg;
         logic        jalr;
         logic        LUI;
         logic        AUIPC;
-        logic [1:0]  alu_op;   
+        aluop_e     alu_op;   
     } control_s;
 
     typedef enum logic [1:0] {
@@ -44,5 +44,21 @@ package riscv_pkg;
         alu_slt = 4'b1000,
         alu_sltu = 4'b1001
     } alu_e;
+
+    typedef struct packed {
+        logic [31:0] pc;
+        logic [31:0] pc_plus4;
+        logic [31:0] instruciton;
+    } if_id_s;
+
+    typedef struct packed {
+        logic [31:0] immediate;
+        logic [4:0] rs1_addr, rs2_addr, rd_addr;
+        logic [31:0] rs1_data, rs2_data;
+        logic [2:0] funct3;
+        logic funct7_5;
+        logic [31:0] pc, pc_plus4;
+        control_s ctrl;
+    } id_ex_s;
 
 endpackage

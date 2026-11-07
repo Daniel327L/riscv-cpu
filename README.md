@@ -78,6 +78,7 @@ Project layout: `rtl/` (RTL) · `tb/` (testbenches) · `test/` (programs + hex) 
 - [ ] 5-stage pipeline — forwarding, hazard detection, stalls (written in SV)
 - [ ] Caches + branch prediction, benchmarked
 - [ ] Official `riscv-tests` ISA suite
+- [ ] Implement UART protocol for terminal display
 
 ## Tools
 

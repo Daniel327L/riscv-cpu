@@ -240,3 +240,12 @@
 
 ## Doing
 - Moving on to actually pipelining the RV32I.
+
+>> Day 20 - 2026-11-08
+
+## Done 
+- Wrote IF and ID stage for pipeline.
+- Basically getting used to the pipeline structure, and also preview a bit of forwarding what is it for and how to use.
+
+## Doine
+- Moving on to EX stage. 
