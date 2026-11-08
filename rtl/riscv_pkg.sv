@@ -72,4 +72,9 @@ package riscv_pkg;
         control_s ctrl;
     } ex_mem_s;
 
+    typedef struct packed {
+        logic [4:0] rd_addr;
+        logic [31:0] wb_data;
+        control_s ctrl;
+    } mem_wb_s;
 endpackage

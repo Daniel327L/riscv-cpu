@@ -12,7 +12,7 @@ always #5 clk = ~clk;
 cpu dut(
 .reset(reset),
 .clk(clk),
-.instruction(instr),
+.instruction_out(instr),
 .pc_out(pc_out)
 );
 
@@ -26,7 +26,7 @@ initial begin
     
     reset = 0;
     #10 reset = 1;  
-    repeat (150) @(posedge clk); //repeat @(posedge clk) delay 10 times
+    repeat (200) @(posedge clk); //repeat @(posedge clk) delay 10 times
     $display("x10=%h",  dut.u4.regs[10]);
   
     $finish;

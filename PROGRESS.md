@@ -241,7 +241,7 @@
 ## Doing
 - Moving on to actually pipelining the RV32I.
 
->> Day 20 - 2026-11-08
+>> Day 20 - 2026-11-07
 
 ## Done 
 - Finished IF, ID, EX, MEM stages and all pipeline reg in between.
@@ -252,5 +252,18 @@
 - Moving on to MEM to WB pipeline reg and then WB stage.
 - Need to implement No-op for loading instruction to prevent hazard.
 - Update reg unit's we, rd addr and data once finished with WB stage.
+- Implement branch prediction to reduce stalling from ID and IF pipeline reg flushing.
+- Synchronize mem_read so that I can use the BRAM in the DE-10 board when synthesizing.
+
+>> Day 21 - 2026-11-08
+
+## Done
+- Completed all stages and pipeline registers
+- Forwarding units now handles all 3 cases, ex_mem, mem_wb and wb to reg.
+- Completed Load use stall
+- Completed branch and jump flushing.
+- Verified against expected values, the same `prog_hex` as before (C programs return 55). 
+
+## Doing
 - Implement branch prediction to reduce stalling from ID and IF pipeline reg flushing.
 - Synchronize mem_read so that I can use the BRAM in the DE-10 board when synthesizing.

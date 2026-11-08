@@ -30,14 +30,18 @@ module reg_file (
                             
 
 always_ff@(posedge clk) begin 
-    if(we && rd_addr != 5'd0) begin
+    if(we && rd_addr != 5'd0) begin //logic here stays untouched
         regs[rd_addr] <= rd_data;
     end
-       //don't need else statement here, since it uses a clock driven sequential block instead of latches that might ended up with inferred latches if don't
-end
+end      
 
-assign rs1_data = (rs1_addr != 5'd0) ? regs[rs1_addr] : 32'b0;  //in RISC-V, address 0 always rep b0 so that 
-assign rs2_data = (rs2_addr != 5'd0) ? regs[rs2_addr] : 32'b0;  //arithemtic operation with 0 is easier to deal with
+assign rs1_data = (rs1_addr == '0) ? '0 : //includes forwarding of WB data for both rs1 and 2 
+                  (we && rd_addr == rs1_addr) ? rd_data :
+                  regs[rs1_addr];
+
+assign rs2_data = (rs2_addr == '0) ? '0 :
+                  (we && rd_addr == rs2_addr) ? rd_data :
+                  regs[rs2_addr];
 
 assign debug_data = (debug_addr != 5'd0) ? regs[debug_addr] : 32'b0 ;
 
