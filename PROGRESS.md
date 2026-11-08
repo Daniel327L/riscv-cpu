@@ -244,8 +244,13 @@
 >> Day 20 - 2026-11-08
 
 ## Done 
-- Wrote IF and ID stage for pipeline.
-- Basically getting used to the pipeline structure, and also preview a bit of forwarding what is it for and how to use.
+- Finished IF, ID, EX, MEM stages and all pipeline reg in between.
+- Implemented forwarding units to prevent register read hazard.
 
-## Doine
-- Moving on to EX stage. 
+
+## Doing
+- Moving on to MEM to WB pipeline reg and then WB stage.
+- Need to implement No-op for loading instruction to prevent hazard.
+- Update reg unit's we, rd addr and data once finished with WB stage.
+- Implement branch prediction to reduce stalling from ID and IF pipeline reg flushing.
+- Synchronize mem_read so that I can use the BRAM in the DE-10 board when synthesizing.

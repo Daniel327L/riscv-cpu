@@ -12,7 +12,6 @@
 //   7'b0100011  store    (sw)
 //   7'b1100011  branch   (beq, bne, blt, bge, bltu, bgeu)
 //   7'b1101111  jal
-//   (jalr / lui / auipc are good stretch goals once the above works)
 //
 // Signal meanings:
 //   reg_write   write result back to the register file
