@@ -59,17 +59,15 @@ module de10_top (
 cpu u1(
 	.clk(MAX10_CLK1_50), //use clk_dived for deployment, use 50MHz clk for simulation and finding hardware constraints
 	.reset(KEY[0]), //push buttons are active low so is the reset mechanism I designed.
-	.instruction(instruction),
+	.instruction_out(instruction),
 	.pc_out(pc_debug),
-	.debug_data(reg_debug),
-	.debug_addr(debug_addr)
 );
-	wire [3:0] debug_addr;
-	assign debug_addr = SW[4:1];
+	
+	
 	wire [31:0] pc_debug, reg_debug, instruction;
 	wire [3:0] hex [5:0];
 	wire [6:0] seg [5:0];
-	wire [31:0] display_val = SW[0] ? reg_debug : pc_debug;
+	wire [31:0] display_val = pc_debug;
 	
 	wire [23:0] shown = KEY[1] ? display_val[23:0]              // released: low 24 bits , this is for showing the most significant 2 bit
 										: {16'h0000, display_val[31:24]}; // pressed: top byte
@@ -83,7 +81,7 @@ cpu u1(
 
 	genvar i; //compile time loop counter
 
-	generate
+	generate //generate is for instantiating or assigning stuff repeatedly
 		for(i=0; i<6; i=i+1) begin : slice //for loop and then name block "slice"
 			assign hex[i] = shown[i*4 +: 4];  //means [base +: width], alternatively, you can do shown[i*4+3 : i*4], same thing
 		end

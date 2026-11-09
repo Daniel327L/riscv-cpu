@@ -51,6 +51,7 @@ package riscv_pkg;
         logic [31:0] pc;
         logic [31:0] pc_plus4;
         logic [31:0] instruction;
+        bit valid;
     } if_id_s;
 
     typedef struct packed {
@@ -61,6 +62,7 @@ package riscv_pkg;
         logic funct7_5;
         logic [31:0] pc, pc_plus4;
         control_s ctrl;
+        bit valid;
     } id_ex_s;
 
     typedef struct packed {
@@ -70,11 +72,13 @@ package riscv_pkg;
         logic [4:0] rd_addr;
         logic [2:0] funct3;
         control_s ctrl;
+        bit valid;
     } ex_mem_s;
 
     typedef struct packed {
         logic [4:0] rd_addr;
         logic [31:0] wb_data;
         control_s ctrl;
+        bit valid;
     } mem_wb_s;
 endpackage

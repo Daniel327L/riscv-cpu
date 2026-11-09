@@ -263,6 +263,11 @@
 - Completed Load use stall
 - Completed branch and jump flushing.
 - Verified against expected values, the same `prog_hex` as before (C programs return 55). 
+- Implemented simple valid bit and return instruction counter to calculate CPI for metrics comparison with single cycle version RV32I.
+- Updated README.
+
+![](Images/pipeline%20v1.0%20CPI.png)
+*CPI result shown from tb
 
 ## Doing
 - Implement branch prediction to reduce stalling from ID and IF pipeline reg flushing.

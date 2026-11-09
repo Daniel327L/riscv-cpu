@@ -1,11 +1,15 @@
 module cpu import riscv_pkg::*;(
-	input logic clk, reset, //input and output by default is wire
+	input logic clk, reset, 
 	output logic [31:0] instruction_out, pc_out
 );
                
 assign pc_out = pc;
 assign instruction_out = if_instruction;
 
+if_id_s if_id; //put on top, because Quartus is upset that struct variable is used before it's declared.
+id_ex_s id_ex;
+ex_mem_s ex_mem; 
+mem_wb_s mem_wb;
 
 // ========================== IF stage =====================================================
 
@@ -30,17 +34,18 @@ end
 
 //============================ IF -> ID reg ===========================================
 
-if_id_s if_id;
-
 always_ff@(posedge clk) begin        
     if(!reset || redirect) begin //redirect = IF and ID current instruction not used, so flush both pipeline reg.
         if_id <= '0;
+        if_id.valid <= 0;
     end else if (load_use_stall) begin
         if_id <= if_id;
+        if_id.valid <= 1;
     end else begin
         if_id.pc <= pc;
         if_id.instruction <= if_instruction;
         if_id.pc_plus4 <= pc + 32'd4;
+        if_id.valid <= 1;
     end
 end
 
@@ -113,11 +118,10 @@ reg_file u4 (
 
 //============================ ID -> EX reg ===================================================================
 
-id_ex_s id_ex;
-
 always_ff@(posedge clk) begin
     if(!reset || redirect || load_use_stall)begin //load_use_stall insert a NO-OP bubble to stall for one cycle
         id_ex <= '0; 
+        id_ex.valid <= 0;
     end
     else begin
         id_ex.immediate <= immediate;
@@ -131,6 +135,7 @@ always_ff@(posedge clk) begin
         id_ex.pc <= if_id.pc;
         id_ex.pc_plus4 <= if_id.pc_plus4;
         id_ex.ctrl <= ctrl;
+        id_ex.valid <= if_id.valid;
     end
 end
 
@@ -220,11 +225,10 @@ assign ex_result = id_ex.ctrl.jal || id_ex.ctrl.jalr ? id_ex.pc_plus4 :
 
 //====================================== EX -> MEM reg =========================================================
 
-ex_mem_s ex_mem; 
-
 always_ff@(posedge clk) begin
     if(!reset) begin
         ex_mem <= '0;
+        ex_mem.valid <= 0;
     end
     else begin
         ex_mem.alu_result <= alu_result;
@@ -233,6 +237,7 @@ always_ff@(posedge clk) begin
         ex_mem.rd_addr <= id_ex.rd_addr;
         ex_mem.funct3 <= id_ex.funct3;
         ex_mem.ctrl <= id_ex.ctrl;
+        ex_mem.valid <= id_ex.valid;
     end
 end
 
@@ -310,16 +315,16 @@ data_mem u7 (  //let read be async for now, chagne to sync when synthesizing to 
 
 //==================================== MEM -> WB reg ================================================================
 
-mem_wb_s mem_wb;
-
 always_ff@(posedge clk) begin
     if(!reset) begin
         mem_wb <= '0;
+        mem_wb.valid <= 0;
     end
     else begin
         mem_wb.rd_addr <= ex_mem.rd_addr;
         mem_wb.wb_data <= wb_data;
         mem_wb.ctrl <= ex_mem.ctrl;
+        mem_wb.valid <= ex_mem.valid;
     end
 end
 
