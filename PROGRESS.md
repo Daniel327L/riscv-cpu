@@ -272,3 +272,11 @@
 ## Doing
 - Implement branch prediction to reduce stalling from ID and IF pipeline reg flushing.
 - Synchronize mem_read so that I can use the BRAM in the DE-10 board when synthesizing.
+
+> Day 22 - 2026-11-09
+
+## Done
+- Learning about branch prediction logic and mechanism.
+
+## Doing
+- Continue branch prediction unit next time.

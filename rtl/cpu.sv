@@ -32,6 +32,15 @@ always_ff@(posedge clk) begin
     end
 end
 
+//------------------------ branch prediction unit ------------------------------------------
+logic [15:0] tags [43:0]; //entry contains: " Valid (1 bit, to check if saved pc is not random X), Label (10 bits, pc[15:6], 
+                                            //mispredit just cost coupel cylces), 
+                                            //Target (30 bits, target[32:2]), Counter (2 bits, for strongly taken, weakly taken, etc) ""
+
+
+
+//------------------------- end of branch prediction unit ----------------------------------------------------
+
 //============================ IF -> ID reg ===========================================
 
 always_ff@(posedge clk) begin        
