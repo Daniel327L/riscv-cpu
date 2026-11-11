@@ -51,6 +51,7 @@ package riscv_pkg;
         logic [31:0] pc;
         logic [31:0] pc_plus4;
         logic [31:0] instruction;
+        logic [31:0] predicted_next_pc;
         bit valid;
     } if_id_s;
 
@@ -61,6 +62,7 @@ package riscv_pkg;
         logic [2:0] funct3;
         logic funct7_5;
         logic [31:0] pc, pc_plus4;
+        logic [31:0] predicted_next_pc;
         control_s ctrl;
         bit valid;
     } id_ex_s;
@@ -81,4 +83,16 @@ package riscv_pkg;
         control_s ctrl;
         bit valid;
     } mem_wb_s;
+
+//============================ Branch predictor ==============================
+
+    typedef struct packed {
+        logic valid;
+        logic [23:0] tag; //upper pc bit, since 6 pc bit is used for index
+        logic [31:0] target; 
+        logic is_cond; //if it's branch or jump
+    } btb_s;
+
+    //bht is only 2 bit entry = 2 bit saturating counter
+
 endpackage

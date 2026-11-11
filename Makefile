@@ -1,17 +1,4 @@
-# Makefile -- iverilog + gtkwave build system for the RV32I single-cycle core.
-#
-# Quick start:
-#   make test_alu     # compile + run the ALU testbench (fails until alu.v works)
-#   make wave_alu     # open the ALU waveform in gtkwave
-#   make cpu          # elaborate the whole core (checks it wires together)
-#   make clean        # remove build artifacts
-#
-# Requires: iverilog, vvp, gtkwave  (all free, open source).
-#   Ubuntu/Debian : sudo apt install iverilog gtkwave
-#   macOS (brew)  : brew install icarus-verilog gtkwave
-#   Windows       : use WSL2 + the apt command above, or oss-cad-suite.
-
-IVERILOG := iverilog
+IVERILOG := iverilog #Icarus
 VVP      := vvp
 GTKWAVE  := gtkwave
 IFLAGS   := -g2012 -Wall
@@ -26,6 +13,10 @@ RVFLAGS   := -march=rv32i -mabi=ilp32 -nostdlib -nostartfiles -Ttext=0x0
 
 # All RTL sources (used when elaborating the full CPU).
 RTL_SRCS := $(RTL)/riscv_pkg.sv $(filter-out $(RTL)/riscv_pkg.sv,$(wildcard $(RTL)/*.sv))
+
+# shared across both targets (Verilator)
+VSRC   = rtl/riscv_pkg.sv $(filter-out rtl/riscv_pkg.sv,$(wildcard rtl/*.sv)) tb/tb_cpu.v
+VFLAGS = --binary --timing -j 0 -Wno-fatal --top-module tb_cpu
 
 .PHONY: all clean cpu
 all: test_alu
@@ -45,6 +36,19 @@ test_%: $(BUILD)
 test_cpu:  #because cpu module needs to instantiate all other 8 modules, so need special make command
 	$(IVERILOG) $(IFLAGS) -o $(BUILD)/cpu.vvp $(TB)/tb_cpu.v $(RTL_SRCS)
 	vvp build/cpu.vvp
+
+
+
+# fast path — no trace, this is your everyday run
+verilate:
+	verilator $(VFLAGS) $(VSRC)
+	./obj_dir/Vtb_cpu
+
+# traced path — only when you need waveforms
+wave:
+	verilator $(VFLAGS) --trace --trace-structs $(VSRC)
+	./obj_dir/Vtb_cpu
+	gtkwave tb_cpu.vcd &
 
 # Open the waveform a test produced. Assumes the tb dumps tb_<name>.vcd.
 wave_%:

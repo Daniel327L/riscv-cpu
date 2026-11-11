@@ -267,7 +267,7 @@
 - Updated README.
 
 ![](Images/pipeline%20v1.0%20CPI.png)
-*CPI result shown from tb
+*CPI result shown from tb*
 
 ## Doing
 - Implement branch prediction to reduce stalling from ID and IF pipeline reg flushing.
@@ -280,3 +280,23 @@
 
 ## Doing
 - Continue branch prediction unit next time.
+
+> Day 23 - 2026-11-11
+
+## Done 
+- Complete branch prediction unit, verified against the C program.
+- Get new metrics, such as CPI and Fmax if any changes
+- Install Verilator for better compilation for SV.
+- Removed Icarus workaround in `cpu.sv`.
+- Synthesized new versions.
+- Discovered Fmax was significantly worse, dropping from 64 MHz to 50MHz since last time.
+- Used Timing analyzer in Quartus Prime to see path summar.
+
+![](Images/Branch%20prediction%20CPI.png)
+*CPI improving from 1.42 to 1.30 after implementing branch prediction*
+
+![](Images/Fmax%20drop.png)
+*Likely fabric congestion of branch prediction large LUT mux.
+
+## Doing
+- Need to improve Fmax, will see if moving those but LUT mux to BRAM wil help or not.

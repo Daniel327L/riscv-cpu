@@ -7,8 +7,8 @@ A **RISC-V RV32I** processor built from scratch in SystemVerilog — implemented
 | Metric | Single-cycle | Pipelined (5-stage) |
 |---|---|---|
 | **Fmax** | 43.43 MHz | **63.89 MHz** |
-| **CPI** | 1.00 | 1.42 |
-| **Throughput** (Fmax ÷ CPI) | 43.43 MIPS | 45.0 MIPS |
+| **CPI** | 1.00 | 1.42 -> 1.30 |
+| **Throughput** (Fmax ÷ CPI) | 43.43 MIPS | 45.0 -> MIPS |
 | **Logic elements** | 18,213 / 49,760 | 12,293 / 49,760 |
 | **Registers** | 9,216 | 8,696 |
 | **Data hazards** | n/a (no overlap) | forwarding + load-use stall |
@@ -52,7 +52,7 @@ Every instruction is checked against expected register/memory state, with test p
 
 - [x] SystemVerilog migration (foundation for the pipeline)
 - [x] 5-stage pipeline — forwarding, load-use stall, branch flush
-- [ ] **Branch prediction** — replace predict-not-taken with a 2-bit counter / BTB; cut the per-loop flush penalty (benchmark CPI before/after)
+- [x] **Branch prediction** — replace predict-not-taken with a 2-bit counter / BTB; cut the per-loop flush penalty (benchmark CPI before/after)
 - [ ] **Synchronous memory → BRAM inference** — registered reads to infer M9K block RAM, dropping register count and raising Fmax
 - [ ] **Instruction / data caches** — with benchmarked hit rate and CPI impact
 - [ ] **Official `riscv-tests`** ISA suite for compliance
@@ -66,7 +66,7 @@ make test_<module>     # single module (e.g. make test_alu)
 make hex PROG=<name>   # assemble test/<name>.s → hex
 ```
 
-**Requires:** Icarus Verilog, GTKWave, the RISC-V GNU toolchain, Python 3 (Quartus Prime for the FPGA flow).
+**Requires:** Icarus Verilog, Verilator (for SV), GTKWave, the RISC-V GNU toolchain, Python 3 (Quartus Prime for the FPGA flow).
 Layout: `rtl/` · `tb/` · `test/` · `scripts/` · `FPGA_MAX10/`
 
-**Tools:** SystemVerilog · Icarus Verilog · GTKWave · RISC-V GNU Toolchain · Intel Quartus Prime · Terasic DE10-Lite (MAX 10)
+**Tools:** SystemVerilog · Icarus Verilog · Verilator · GTKWave · RISC-V GNU Toolchain · Intel Quartus Prime · Terasic DE10-Lite (MAX 10)

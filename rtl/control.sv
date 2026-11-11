@@ -75,8 +75,8 @@ module control import riscv_pkg::*; ( //import the packge and use * to include w
                 ctrl.AUIPC = 1'b1;
                 ctrl.reg_write = 1'b1;
             end
+            default: ;
         endcase
-
     end
    
 endmodule

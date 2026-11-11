@@ -20,31 +20,47 @@ instr_mem u1(   //IF stages outputs pc, instruction and pc_plus4 to go into ID s
 .instr(if_instruction)
 );
 
-always_ff@(posedge clk) begin
-    if(!reset)begin
-        pc <= '0; 
-    end else if(redirect) begin
-        pc <= redirect_target;
-    end else if(load_use_stall)begin 
-        pc <= pc;
-    end else begin 
-        pc <= pc + 32'd4; 
-    end
-end
 
-//------------------------ branch prediction unit ------------------------------------------
-logic [15:0] tags [43:0]; //entry contains: " Valid (1 bit, to check if saved pc is not random X), Label (10 bits, pc[15:6], 
-                                            //mispredit just cost coupel cylces), 
-                                            //Target (30 bits, target[32:2]), Counter (2 bits, for strongly taken, weakly taken, etc) ""
+//------------------------ branch prediction unit, mainly BTB------------------------------------------
+
+btb_s btb [0:63]; //6 bits for btb
+logic [1:0] bht_counter [0:127]; //means has 128 entries
+logic [6:0] bht_index;
+logic [5:0] btb_index;
+logic btb_hit;
+logic predict_taken;
+
+logic mispredict;
+logic [31:0]predicted_next_pc;
+
+assign bht_index = pc[9:2];
+assign btb_index = pc[7:2];
+assign btb_hit = btb[btb_index].valid && (btb[btb_index].tag == pc[31:8]);
+
+assign predict_taken = btb_hit && (btb[btb_index].is_cond ? bht_counter[bht_index][1] : '1 );
+assign predicted_next_pc = predict_taken ? btb[btb_index].target : pc + 32'd4;
 
 
 
 //------------------------- end of branch prediction unit ----------------------------------------------------
 
+always_ff@(posedge clk) begin
+    if(!reset)begin
+        pc <= '0; 
+    end else if(mispredict) begin
+        pc <= actual_next_pc;     
+    end else if(load_use_stall)begin 
+        pc <= pc;
+    end else begin 
+        pc <= predicted_next_pc; 
+    end
+end
+
+
 //============================ IF -> ID reg ===========================================
 
 always_ff@(posedge clk) begin        
-    if(!reset || redirect) begin //redirect = IF and ID current instruction not used, so flush both pipeline reg.
+    if(!reset || mispredict) begin //redirect = IF and ID current instruction not used, so flush both pipeline reg.
         if_id <= '0;
         if_id.valid <= 0;
     end else if (load_use_stall) begin
@@ -54,6 +70,7 @@ always_ff@(posedge clk) begin
         if_id.pc <= pc;
         if_id.instruction <= if_instruction;
         if_id.pc_plus4 <= pc + 32'd4;
+        if_id.predicted_next_pc <= predicted_next_pc;
         if_id.valid <= 1;
     end
 end
@@ -128,7 +145,7 @@ reg_file u4 (
 //============================ ID -> EX reg ===================================================================
 
 always_ff@(posedge clk) begin
-    if(!reset || redirect || load_use_stall)begin //load_use_stall insert a NO-OP bubble to stall for one cycle
+    if(!reset || mispredict || load_use_stall)begin //load_use_stall insert a NO-OP bubble to stall for one cycle
         id_ex <= '0; 
         id_ex.valid <= 0;
     end
@@ -145,6 +162,7 @@ always_ff@(posedge clk) begin
         id_ex.pc_plus4 <= if_id.pc_plus4;
         id_ex.ctrl <= ctrl;
         id_ex.valid <= if_id.valid;
+        id_ex.predicted_next_pc <= if_id.predicted_next_pc;
     end
 end
 
@@ -157,10 +175,12 @@ alu_e alu_sel;
 logic branch_taken;
 logic redirect;
 logic [31:0] redirect_target;
+logic [31:0] actual_next_pc;
 
-//Icarus workaround
-aluop_e id_ex_alu_op;
-assign id_ex_alu_op = aluop_e'(id_ex.ctrl.alu_op);
+
+//branch predictor write
+logic [6:0] bht_wr;
+logic [5:0] btb_wr;
 
 // --------------- Forwarding unit for alu a and b ----------------------------
 
@@ -192,7 +212,7 @@ always_comb begin
 //------------------ End of Forwarding units ----------------------------------------------
 
 alu_control u5 (
-.alu_op(id_ex_alu_op),  // was id_ex.ctrl.alu_op
+.alu_op(id_ex.ctrl.alu_op),  
 .funct3(id_ex.funct3),
 .funct7_5(id_ex.funct7_5),
 .alu(alu_sel)
@@ -216,21 +236,55 @@ always_comb begin
             3'b111: branch_taken = frwd_rs1 >= frwd_rs2; //bgeu (usigned)
             3'b100: branch_taken = signed'(frwd_rs1) < signed'(frwd_rs2); //blt (signed) 
             3'b101: branch_taken = signed'(frwd_rs1) >= signed'(frwd_rs2); //bge (signed)
+            default: ;
         endcase
     end
 end
 
-assign redirect = branch_taken || id_ex.ctrl.jal || id_ex.ctrl.jalr;
+assign ex_result = id_ex.ctrl.jal || id_ex.ctrl.jalr ? id_ex.pc_plus4 :     
+                   id_ex.ctrl.LUI ? id_ex.immediate :
+                   id_ex.ctrl.AUIPC ? id_ex.pc + id_ex.immediate :
+                   alu_result;
+
 
 assign redirect_target = branch_taken ? id_ex.pc + id_ex.immediate : //imm is already sign extended in imm_gen
                          id_ex.ctrl.jal ? id_ex.pc + id_ex.immediate :
                          id_ex.ctrl.jalr ? (alu_a + id_ex.immediate) & ~ 32'b1 :
                          '0;
 
-assign ex_result = id_ex.ctrl.jal || id_ex.ctrl.jalr ? id_ex.pc_plus4 :     
-                   id_ex.ctrl.LUI ? id_ex.immediate :
-                   id_ex.ctrl.AUIPC ? id_ex.pc + id_ex.immediate :
-                   alu_result;
+assign actual_next_pc = (branch_taken || id_ex.ctrl.jal || id_ex.ctrl.jalr) ? redirect_target :
+                        id_ex.pc_plus4;
+                        
+assign mispredict = id_ex.valid && (actual_next_pc != id_ex.predicted_next_pc);
+
+//--------------------------- Writing for branch predictor ---------------------------------------
+
+assign bht_wr = id_ex.pc[11:2];
+assign btb_wr = id_ex.pc[7:2];
+
+always_ff@(posedge clk) begin
+    if(id_ex.valid) begin //for BTB
+        if((id_ex.ctrl.branch && branch_taken) || id_ex.ctrl.jal || id_ex.ctrl.jalr) begin
+            btb[btb_wr].valid <= '1;
+            btb[btb_wr].tag <= id_ex.pc[31:8];
+            btb[btb_wr].target <= redirect_target;
+            btb[btb_wr].is_cond <= id_ex.ctrl.branch; //check for conditional or not
+        end
+        if(id_ex.ctrl.branch) begin
+            if(branch_taken) //for BHT
+                bht_counter[bht_wr] <= (bht_counter[bht_wr] == 2'b11) ? bht_counter[bht_wr] :  bht_counter[bht_wr] +1 ;
+            else
+                bht_counter[bht_wr] <= (bht_counter[bht_wr] == 2'b00) ? bht_counter[bht_wr] :  bht_counter[bht_wr] -1 ;
+        end 
+    end
+end
+
+initial begin //initialize all valid bit as 0 
+    for(int i = 0; i < 64; i++)
+        btb[i].valid = '0; 
+end
+
+//------------------------------ End of branch predictor writing ------------------------------------------
 
 //====================================== EX -> MEM reg =========================================================
 
@@ -258,12 +312,6 @@ logic [3:0] byte_enable;
 logic [31:0] write_data;
 logic [1:0] byte_sel;
 
-// Icarus workaround
-logic dmem_read, dmem_write;
-assign dmem_read  = ex_mem.ctrl.mem_read;
-assign dmem_write = ex_mem.ctrl.mem_write;
-
-
 assign byte_sel = ex_mem.alu_result[1:0];
 assign wb_data = ex_mem.ctrl.mem_to_reg ? mem_data : ex_mem.ex_result;
 
@@ -290,10 +338,12 @@ always_comb begin
                         2'b01: mem_data = {{24{read_data[15]}}, read_data[15:8]};  
                         2'b10: mem_data = {{24{read_data[23]}}, read_data[23:16]};  
                         2'b11: mem_data = {{24{read_data[31]}}, read_data[31:24]};  
+                        default: ;
                     endcase
             3'b001: case(byte_sel) //lh - load half word
                         2'b00: mem_data = {{16{read_data[15]}}, read_data[15:0]};  
                         2'b10: mem_data = {{16{read_data[31]}}, read_data[31:16]};
+                        default: ;
                     endcase 
             3'b010: mem_data = read_data; //lw - load word
             3'b100: case(byte_sel) //lbu - unsigned
@@ -301,11 +351,14 @@ always_comb begin
                         2'b01: mem_data = {24'b0, read_data[15:8]};
                         2'b10: mem_data = {24'b0, read_data[23:16]};
                         2'b11: mem_data = {24'b0, read_data[31:24]};
+                        default: ;
                     endcase 
             3'b101: case(byte_sel) //lhu - unsigned
                         2'b00: mem_data = {16'b0, read_data[15:0]}; 
                         2'b10: mem_data = {16'b0, read_data[31:16]}; 
+                        default: ;
                     endcase
+            default: ;
         endcase
     end
 end
@@ -313,8 +366,8 @@ end
 
 data_mem u7 (  //let read be async for now, chagne to sync when synthesizing to use BRAM for memory
 .clk(clk),
-.mem_read(dmem_read), // was ex_mem.ctrl.mem_read
-.mem_write(dmem_write), // was ex_mem.ctrl.mem_write
+.mem_read(ex_mem.ctrl.mem_read),
+.mem_write(ex_mem.ctrl.mem_write), 
 .addr(ex_mem.alu_result), 
 .write_data(write_data), 
 .read_data(read_data),  

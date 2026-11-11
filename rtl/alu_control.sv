@@ -39,6 +39,7 @@ always_comb begin
                3'b000: case(funct7_5)
                        1'b0: alu = alu_add;
                        1'b1: alu = alu_sub;
+                       default: ;
                        endcase 
                3'b001: alu = alu_sll;
                3'b010: alu = alu_slt;
@@ -47,9 +48,11 @@ always_comb begin
                3'b101: case(funct7_5)
                        1'b0: alu = alu_srl;
                        1'b1: alu = alu_sra;
+                       default: ;
                        endcase
                3'b110: alu = alu_or;
                3'b111: alu = alu_and;
+               default: ;
                endcase
     endcase
 end

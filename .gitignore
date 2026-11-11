@@ -11,3 +11,6 @@ FPGA_MAX10/*
 !FPGA_MAX10/*.qpf
 !FPGA_MAX10/*.qsf
 !FPGA_MAX10/*.sdc
+
+# From Verilator
+obj_dir/
