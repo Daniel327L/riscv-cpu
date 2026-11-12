@@ -281,7 +281,7 @@
 ## Doing
 - Continue branch prediction unit next time.
 
-> Day 23 - 2026-11-11
+> Day 23 - 2026-11-10
 
 ## Done 
 - Complete branch prediction unit, verified against the C program.
@@ -300,3 +300,24 @@
 
 ## Doing
 - Need to improve Fmax, will see if moving those but LUT mux to BRAM wil help or not.
+
+> Day 24 - 2026-11-11
+
+## Done
+- Synchronized the data memory read so Quartus infers **M9K block RAM** for the array (byte-lane template — four byte-wide arrays, per-lane write enables, registered read). This moved ~8,100 flip-flops out of the fabric; logic usage roughly halved (18k -> 8k LEs).
+- Spent most of the day chasing why Fmax *wasn't* improving. Turned out it was never really congestion — it was a stack of critical paths, each fix just exposing the next one underneath. Used the Quartus Timing Analyzer at every step instead of guessing (guessed wrong a few times, the report was right every time).
+- Found the register file was being inferred into M9K with "write-first bypass" glue around it. The real fix was switching the reg file to **negedge write**, which removes the combinational WB->read bypass that was the top critical path.
+- Reduced the branch-predictor critical path with **direction-based mispredict detection**: precompute `(predicted != pc+imm)` and `(predicted != pc+4)` from registered values, then let the 1-bit `branch_taken` select between them — instead of a 32-bit compare of `actual_next_pc` vs `predicted` sitting on the PC loop. `jalr` just always-flushes (its target is late and it's rare).
+- Net result: **Fmax recovered 44 -> 51.72 MHz**, CPI steady at 1.30, data memory now in BRAM.
+- Honest finding: the predictor is still a net *throughput* tradeoff on this core (~45 -> ~40 MIPS) because branches resolve in EX, so the branch-resolution path is the clock limiter. Full investigation written up in `docs/devlog.md`.
+
+![](Images/Mem%20in%20M9K%202.png)
+*Data memory inferred into M9K — logic elements and registers roughly halved.*
+
+![](Images/branch%20predictor%20fix%203.png)
+*After the direction-based mispredict fix: Fmax back up to 51.72 MHz.*
+
+## Doing
+- Realize the predictor's benefit: move to **early branch resolution** (resolve in ID) or a deeper fetch pipeline, so adding the predictor doesn't cost Fmax.
+- **Return-address stack** for `jalr` (predict returns instead of always-flushing).
+- Official `riscv-tests` compliance suite; instruction/data caches.

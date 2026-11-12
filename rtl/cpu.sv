@@ -33,7 +33,7 @@ logic predict_taken;
 logic mispredict;
 logic [31:0]predicted_next_pc;
 
-assign bht_index = pc[9:2];
+assign bht_index = pc[8:2];
 assign btb_index = pc[7:2];
 assign btb_hit = btb[btb_index].valid && (btb[btb_index].tag == pc[31:8]);
 
@@ -60,7 +60,7 @@ end
 //============================ IF -> ID reg ===========================================
 
 always_ff@(posedge clk) begin        
-    if(!reset || mispredict) begin //redirect = IF and ID current instruction not used, so flush both pipeline reg.
+    if(!reset || mispredict) begin 
         if_id <= '0;
         if_id.valid <= 0;
     end else if (load_use_stall) begin
@@ -168,15 +168,13 @@ end
 
 //================================ EX stage ===============================================================================
 
-logic [31:0] alu_a, alu_b, alu_result, read_data;
+logic [31:0] alu_a, alu_b, alu_result;
 logic [31:0] ex_result; //ex_result is for any write back data
 logic zero;
 alu_e alu_sel;
 logic branch_taken;
-logic redirect;
-logic [31:0] redirect_target;
 logic [31:0] actual_next_pc;
-
+logic [31:0] redirect_target;
 
 //branch predictor write
 logic [6:0] bht_wr;
@@ -193,7 +191,7 @@ always_comb begin
     if(ex_mem.ctrl.reg_write && ex_mem.rd_addr == id_ex.rs1_addr && ex_mem.rd_addr != 0)
         frwd_rs1 = ex_mem.ex_result; 
     else if (mem_wb.ctrl.reg_write && mem_wb.rd_addr == id_ex.rs1_addr && mem_wb.rd_addr != 0)
-        frwd_rs1 = mem_wb.wb_data;
+        frwd_rs1 = wb_data;
     else
         frwd_rs1 = id_ex.rs1_data;
 end
@@ -202,12 +200,12 @@ always_comb begin
     if(ex_mem.ctrl.reg_write && ex_mem.rd_addr == id_ex.rs2_addr && ex_mem.rd_addr != 0)
         frwd_rs2 = ex_mem.ex_result; 
     else if (mem_wb.ctrl.reg_write && mem_wb.rd_addr == id_ex.rs2_addr && mem_wb.rd_addr != 0)
-        frwd_rs2 = mem_wb.wb_data;
+        frwd_rs2 = wb_data;
     else
         frwd_rs2 = id_ex.rs2_data;
     end
 
-//this forwarding + the one in reg unit, covers all three cases of forwarding: ex_mem, mem_wb, wb_reg (for writing into rs1 or rs2 address)
+//this forwarding + wb forward handled by writing in negedge, covers all three cases of forwarding: ex_mem, mem_wb, wb_reg (for writing into rs1 or rs2 address)
 
 //------------------ End of Forwarding units ----------------------------------------------
 
@@ -246,20 +244,31 @@ assign ex_result = id_ex.ctrl.jal || id_ex.ctrl.jalr ? id_ex.pc_plus4 :
                    id_ex.ctrl.AUIPC ? id_ex.pc + id_ex.immediate :
                    alu_result;
 
-
-assign redirect_target = branch_taken ? id_ex.pc + id_ex.immediate : //imm is already sign extended in imm_gen
-                         id_ex.ctrl.jal ? id_ex.pc + id_ex.immediate :
-                         id_ex.ctrl.jalr ? (alu_a + id_ex.immediate) & ~ 32'b1 :
+assign redirect_target = branch_taken   ? id_ex.pc + id_ex.immediate :
+                         id_ex.ctrl.jal  ? id_ex.pc + id_ex.immediate :
+                         id_ex.ctrl.jalr ? (alu_a + id_ex.immediate) & ~32'b1 :
                          '0;
 
-assign actual_next_pc = (branch_taken || id_ex.ctrl.jal || id_ex.ctrl.jalr) ? redirect_target :
-                        id_ex.pc_plus4;
-                        
-assign mispredict = id_ex.valid && (actual_next_pc != id_ex.predicted_next_pc);
+assign actual_next_pc = (branch_taken || id_ex.ctrl.jal || id_ex.ctrl.jalr)
+                        ? redirect_target : id_ex.pc_plus4;
+                  
+always_comb begin
+    if(!id_ex.valid)
+        mispredict = '0;
+    else if(id_ex.ctrl.branch) 
+        mispredict = branch_taken ? (id_ex.predicted_next_pc != id_ex.pc + id_ex.immediate) : 
+                                    (id_ex.predicted_next_pc != id_ex.pc_plus4);
+    else if(id_ex.ctrl.jal)
+        mispredict = id_ex.predicted_next_pc != id_ex.pc + id_ex.immediate;
+    else if (id_ex.ctrl.jalr)
+        mispredict = '1; //flush anway, because it's rare and comparing predicted with id_ex.rs1_data + id_ex.immediate is super late consider forwarding
+    else
+        mispredict = id_ex.predicted_next_pc != id_ex.pc_plus4;
+end
 
 //--------------------------- Writing for branch predictor ---------------------------------------
 
-assign bht_wr = id_ex.pc[11:2];
+assign bht_wr = id_ex.pc[8:2];
 assign btb_wr = id_ex.pc[7:2];
 
 always_ff@(posedge clk) begin
@@ -283,7 +292,7 @@ initial begin //initialize all valid bit as 0
     for(int i = 0; i < 64; i++)
         btb[i].valid = '0; 
 end
-
+    
 //------------------------------ End of branch predictor writing ------------------------------------------
 
 //====================================== EX -> MEM reg =========================================================
@@ -306,14 +315,13 @@ end
 
 //====================================== MEM stage ==========================================================
 
-logic [31:0] wb_data;
 logic [31:0] mem_data;
 logic [3:0] byte_enable;
 logic [31:0] write_data;
 logic [1:0] byte_sel;
 
+
 assign byte_sel = ex_mem.alu_result[1:0];
-assign wb_data = ex_mem.ctrl.mem_to_reg ? mem_data : ex_mem.ex_result;
 
 assign write_data = byte_enable == 4'b1111 ? ex_mem.rs2_data :
                     byte_enable == 4'b0011 || byte_enable == 4'b1100 ? {2{ex_mem.rs2_data[15:0]}} :
@@ -329,48 +337,14 @@ assign byte_enable = ex_mem.funct3 == 3'b010 ? 4'b1111 :
                      ex_mem.funct3 == 3'b000 && byte_sel == 2'b11 ? 4'b1000:
                      4'b0000;
 
-always_comb begin
-    mem_data = read_data;
-    if(ex_mem.ctrl.mem_read) begin
-        case(ex_mem.funct3)
-            3'b000: case(byte_sel) //lb - load byte
-                        2'b00: mem_data = {{24{read_data[7]}}, read_data[7:0]};  
-                        2'b01: mem_data = {{24{read_data[15]}}, read_data[15:8]};  
-                        2'b10: mem_data = {{24{read_data[23]}}, read_data[23:16]};  
-                        2'b11: mem_data = {{24{read_data[31]}}, read_data[31:24]};  
-                        default: ;
-                    endcase
-            3'b001: case(byte_sel) //lh - load half word
-                        2'b00: mem_data = {{16{read_data[15]}}, read_data[15:0]};  
-                        2'b10: mem_data = {{16{read_data[31]}}, read_data[31:16]};
-                        default: ;
-                    endcase 
-            3'b010: mem_data = read_data; //lw - load word
-            3'b100: case(byte_sel) //lbu - unsigned
-                        2'b00: mem_data = {24'b0, read_data[7:0]};
-                        2'b01: mem_data = {24'b0, read_data[15:8]};
-                        2'b10: mem_data = {24'b0, read_data[23:16]};
-                        2'b11: mem_data = {24'b0, read_data[31:24]};
-                        default: ;
-                    endcase 
-            3'b101: case(byte_sel) //lhu - unsigned
-                        2'b00: mem_data = {16'b0, read_data[15:0]}; 
-                        2'b10: mem_data = {16'b0, read_data[31:16]}; 
-                        default: ;
-                    endcase
-            default: ;
-        endcase
-    end
-end
 
-
-data_mem u7 (  //let read be async for now, chagne to sync when synthesizing to use BRAM for memory
+data_mem u7 (  
 .clk(clk),
 .mem_read(ex_mem.ctrl.mem_read),
 .mem_write(ex_mem.ctrl.mem_write), 
 .addr(ex_mem.alu_result), 
 .write_data(write_data), 
-.read_data(read_data),  
+.read_data(mem_data),  
 .byte_enable(byte_enable)
 );
 
@@ -384,7 +358,9 @@ always_ff@(posedge clk) begin
     end
     else begin
         mem_wb.rd_addr <= ex_mem.rd_addr;
-        mem_wb.wb_data <= wb_data;
+        mem_wb.byte_sel <= byte_sel;
+        mem_wb.ex_result <= ex_mem.ex_result;
+        mem_wb.funct3 <= ex_mem.funct3;
         mem_wb.ctrl <= ex_mem.ctrl;
         mem_wb.valid <= ex_mem.valid;
     end
@@ -392,9 +368,47 @@ end
 
 //====================================== WB stage ===================================================================
 
-assign wb_reg_write = mem_wb.ctrl.reg_write;
-assign wb_result = mem_wb.wb_data;
-assign wb_addr = mem_wb.rd_addr;
+logic [31:0] read_data;
+logic [31:0] wb_data;
 
+always_comb begin
+    read_data = mem_data; //mem data comes from BRAM after one clk cycle, which aligns with the mem_wb pipeline regs.
+    if(mem_wb.ctrl.mem_read) begin
+        case(mem_wb.funct3)
+            3'b000: case(mem_wb.byte_sel) //lb - load byte
+                        2'b00: read_data = {{24{mem_data[7]}}, mem_data[7:0]};  
+                        2'b01: read_data = {{24{mem_data[15]}}, mem_data[15:8]};  
+                        2'b10: read_data = {{24{mem_data[23]}}, mem_data[23:16]};  
+                        2'b11: read_data = {{24{mem_data[31]}}, mem_data[31:24]};  
+                        default: ;
+                    endcase
+            3'b001: case(mem_wb.byte_sel) //lh - load half word
+                        2'b00: read_data = {{16{mem_data[15]}}, mem_data[15:0]};  
+                        2'b10: read_data = {{16{mem_data[31]}}, mem_data[31:16]};
+                        default: ;
+                    endcase 
+            3'b010: read_data = mem_data; //lw - load word
+            3'b100: case(mem_wb.byte_sel) //lbu - unsigned
+                        2'b00: read_data = {24'b0, mem_data[7:0]};
+                        2'b01: read_data = {24'b0, mem_data[15:8]};
+                        2'b10: read_data = {24'b0, mem_data[23:16]};
+                        2'b11: read_data = {24'b0, mem_data[31:24]};
+                        default: ;
+                    endcase 
+            3'b101: case(mem_wb.byte_sel) //lhu - unsigned
+                        2'b00: read_data = {16'b0, mem_data[15:0]}; 
+                        2'b10: read_data = {16'b0, mem_data[31:16]}; 
+                        default: ;
+                    endcase
+            default: ;
+        endcase
+    end
+end
+
+assign wb_data = mem_wb.ctrl.mem_to_reg ? read_data : mem_wb.ex_result;
+
+assign wb_reg_write = mem_wb.ctrl.reg_write;
+assign wb_result = wb_data;
+assign wb_addr = mem_wb.rd_addr;
 
 endmodule   

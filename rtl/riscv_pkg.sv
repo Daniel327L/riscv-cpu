@@ -79,7 +79,9 @@ package riscv_pkg;
 
     typedef struct packed {
         logic [4:0] rd_addr;
-        logic [31:0] wb_data;
+        logic [1:0] byte_sel;
+        logic [31:0] ex_result;
+        logic [2:0] funct3;
         control_s ctrl;
         bit valid;
     } mem_wb_s;

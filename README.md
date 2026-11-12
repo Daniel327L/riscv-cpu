@@ -1,30 +1,33 @@
 # RISC-V RV32I CPU Core
 
-A **RISC-V RV32I** processor built from scratch in SystemVerilog — implemented first as a single-cycle core, then re-architected as a **5-stage pipeline** with full hazard handling. Runs compiled C end-to-end and deployed to an Intel MAX 10 FPGA.
+A **RISC-V RV32I** processor built from scratch in SystemVerilog — first as a single-cycle core, then re-architected as a **5-stage pipeline** with full hazard handling and a **branch predictor**. Runs compiled C end-to-end and deployed to an Intel MAX 10 FPGA.
 
 ## Results
 
-| Metric | Single-cycle | Pipelined (5-stage) |
-|---|---|---|
-| **Fmax** | 43.43 MHz | **63.89 MHz** |
-| **CPI** | 1.00 | 1.42 -> 1.30 |
-| **Throughput** (Fmax ÷ CPI) | 43.43 MIPS | 45.0 -> MIPS |
-| **Logic elements** | 18,213 / 49,760 | 12,293 / 49,760 |
-| **Registers** | 9,216 | 8,696 |
-| **Data hazards** | n/a (no overlap) | forwarding + load-use stall |
-| **Control hazards** | n/a (resolved same cycle) | flush (predict-not-taken) |
+| Metric | Single-cycle | 5-stage pipeline | + branch predictor |
+|---|---|---|---|
+| **Fmax** | 43.43 MHz | **63.89 MHz** | 51.72 MHz |
+| **CPI** | 1.00 | 1.42 | **1.30** |
+| **Throughput** (Fmax ÷ CPI) | 43.4 MIPS | **45.0 MIPS** | 39.8 MIPS |
+| **Logic elements** | 18,213 | 12,293 | **8,016** |
+| **Registers** | 9,216 | 8,696 | **5,531** |
 
-*CPI measured on a compiled `-O0` sum loop; FPGA numbers from Quartus (MAX 10 10M50DAF484C7G, slow model).*
+*CPI on a compiled `-O0` sum loop; FPGA numbers from Quartus (MAX 10 10M50DAF484C7G, slow model). Data memory inferred into M9K block RAM (8,192 bits).*
 
 ## Performance
 
-Pipelining shortens the per-stage critical path, raising Fmax ~47%. On this unoptimized benchmark CPI rises to 1.42 — the code is load-heavy (every variable is a memory access → constant load-use stalls) with a taken branch every loop iteration (a 2-cycle flush each), so hazard stalls offset much of the clock gain, netting ~4% throughput. That's the expected behavior of a simple pipeline on hostile code, and it's exactly what the planned branch predictor and caches target. The pipeline's ceiling is 63.89 MIPS (CPI 1.0); the gap to it is hazard overhead to be clawed back.
+The branch predictor (64-entry BTB + 128-entry 2-bit BHT) cuts **CPI 1.42 → 1.30** by killing the per-loop branch flush. But it also drops **Fmax 63.89 → 51.72 MHz**: branches resolve in EX, so the forwarded-operand → compare → redirect path is the critical path, and the predictor's mispredict logic piles onto it. Net throughput therefore *falls* (~45 → ~40 MIPS) — a real finding, not a bug: **on a simple core that resolves branches in EX, a predictor doesn't pay for itself.** Realizing its benefit needs early branch resolution (in ID) or a deeper fetch pipeline. Full root-cause writeup in [`docs/devlog.md`](docs/devlog.md).
+
+Separately, moving the data memory to a synchronous, byte-enabled array let Quartus infer **M9K block RAM**, pulling ~8,100 flip-flops out of the fabric and **halving logic usage** (18k → 8k LEs).
 
 ## What's Implemented
 
 - **Full RV32I** (~40 instructions): R/I arithmetic, loads/stores with **sub-word byte-enable access**, branches (signed/unsigned), `jal`/`jalr`, `lui`/`auipc`.
-- **5-stage pipeline** (IF/ID/EX/MEM/WB) with **3-path forwarding** (EX/MEM, MEM/WB, and a write-first register file), a **load-use hazard stall**, and **branch/jump flush** (branches resolve in EX).
-- **Runs compiled C** via the RISC-V GNU toolchain — stack frames, function call/return, loops, mixed-size memory. `sum(1..10)` returns `a0 = 0x37 = 55`.
+- **5-stage pipeline** (IF/ID/EX/MEM/WB) with **3-path forwarding**, a **load-use stall**, and **branch/jump flush** (resolved in EX).
+- **Branch predictor** — BTB + 2-bit BHT, with **direction-based mispredict detection** that keeps the 32-bit compare off the PC loop.
+- **Negedge-write register file** — removes the combinational write-first bypass that was the critical path.
+- **Synchronous data memory** inferred as **M9K block RAM**.
+- **Runs compiled C** via the RISC-V GNU toolchain. `sum(1..10)` returns `a0 = 0x37 = 55`.
 - **FPGA-proven** on a Terasic DE10-Lite (Intel MAX 10).
 
 ## Architecture
@@ -32,41 +35,43 @@ Pipelining shortens the per-stage critical path, raising Fmax ~47%. On this unop
 ```
 IF ─[IF/ID]─ ID ─[ID/EX]─ EX ─[EX/MEM]─ MEM ─[MEM/WB]─ WB
 instr_mem    control      ALU           data_mem       reg_file
-             reg_file rd  alu_ctrl      (byte-enable)  write
-             imm_gen      forward+branch
+             reg_file rd  alu_ctrl      (BRAM,         write
+             imm_gen      forward +      byte-enable)  (negedge)
+             predict      branch + mispredict
 ```
 
-Harvard memories (separate instruction/data). Control signals are bundled in a packed `control_s` struct and carried through typed pipeline-register structs (`if_id_s` … `mem_wb_s`). Forwarding and hazard-detection units live in EX; branches and jumps resolve in EX and redirect/flush the front end.
+Harvard memories (separate instruction/data). Control signals are bundled in a packed `control_s` struct and carried through typed pipeline-register structs (`if_id_s` … `mem_wb_s`). Forwarding and hazard detection live in EX; branches/jumps resolve in EX and redirect/flush the front end. The branch prediction (IF) and its update (EX) ride through the pipeline alongside each instruction.
 
 ## Verification
 
-Every instruction is checked against expected register/memory state, with test programs generated by the RISC-V toolchain (`.s`/`.c` → ELF → hex — no hand-encoding). Compiled C runs end-to-end, and CPI is measured in simulation via a retired-instruction counter (a `valid` bit distinguishes real instructions from pipeline bubbles). Simulated in **Icarus Verilog**; waveforms in **GTKWave**.
+Every instruction is checked against expected register/memory state; test programs are generated by the RISC-V toolchain (`.s`/`.c` → ELF → hex — no hand-encoding). Compiled C runs end-to-end, and CPI is measured in simulation via a retired-instruction counter (a `valid` bit separates real instructions from bubbles). Simulated in **Verilator** (migrated from Icarus for better SystemVerilog support); waveforms in **GTKWave**.
 
 ## Debugging Highlights
 
-- **`addi` decoded as `sub`** — the funct7 bit (`instr[30]`) was used to pick add/sub for *all* ALU ops, but for I-type `addi` that bit belongs to the immediate; gated to R-type and I-type shifts.
-- **Read-during-write hazard** — a consumer reading in ID got a stale value while its producer was still in WB; fixed with a write-first register file alongside EX forwarding.
-- **Icarus nested packed-struct limitation** — a two-level `struct.sub.field` in a module port map silently mis-connected the whole struct; root-caused with a minimal repro and worked around with stage-local control signals.
+- **Fmax regression after the predictor** — root-caused through five critical-path layers using the Quartus timing report (register-file bypass → negedge write; M9K reg-file mapping; data-mem BRAM inference; mispredict comparator → direction-based detection; sync-memory forwarding). See [`docs/devlog.md`](docs/devlog.md).
+- **`addi` decoded as `sub`** — the `funct7` bit (`instr[30]`) was used to pick add/sub for *all* ALU ops, but for I-type `addi` that bit belongs to the immediate; gated to R-type and I-type shifts.
+- **Read-during-write hazard** — a consumer reading in ID got a stale value while its producer was still in WB; now solved with a **negedge-write register file** (replacing the earlier combinational write-first bypass, which had become the critical path).
 
 ## Roadmap
 
-- [x] SystemVerilog migration (foundation for the pipeline)
+- [x] SystemVerilog migration
 - [x] 5-stage pipeline — forwarding, load-use stall, branch flush
-- [x] **Branch prediction** — replace predict-not-taken with a 2-bit counter / BTB; cut the per-loop flush penalty (benchmark CPI before/after)
-- [ ] **Synchronous memory → BRAM inference** — registered reads to infer M9K block RAM, dropping register count and raising Fmax
-- [ ] **Instruction / data caches** — with benchmarked hit rate and CPI impact
-- [ ] **Official `riscv-tests`** ISA suite for compliance
-- [ ] **UART** for terminal output from the running core
+- [x] Branch prediction — BTB + 2-bit BHT (CPI 1.42 → 1.30)
+- [x] Synchronous memory → M9K BRAM inference
+- [ ] **Early branch resolution** (ID) / **return-address stack** — recover the predictor's lost throughput
+- [ ] Instruction / data caches — benchmarked hit rate and CPI impact
+- [ ] Official `riscv-tests` compliance suite
+- [ ] UART for terminal output from the running core
 
 ## Build
 
 ```bash
-make test_cpu          # compile + run the full-CPU testbench
+make verilate          # build + run the full-CPU testbench in Verilator
 make test_<module>     # single module (e.g. make test_alu)
 make hex PROG=<name>   # assemble test/<name>.s → hex
 ```
 
-**Requires:** Icarus Verilog, Verilator (for SV), GTKWave, the RISC-V GNU toolchain, Python 3 (Quartus Prime for the FPGA flow).
-Layout: `rtl/` · `tb/` · `test/` · `scripts/` · `FPGA_MAX10/`
+**Requires:** Verilator, GTKWave, the RISC-V GNU toolchain, Python 3 (Quartus Prime for the FPGA flow).
+Layout: `rtl/` · `tb/` · `test/` · `scripts/` · `docs/` · `FPGA_MAX10/`
 
-**Tools:** SystemVerilog · Icarus Verilog · Verilator · GTKWave · RISC-V GNU Toolchain · Intel Quartus Prime · Terasic DE10-Lite (MAX 10)
+**Tools:** SystemVerilog · Verilator · GTKWave · RISC-V GNU Toolchain · Intel Quartus Prime · Terasic DE10-Lite (MAX 10)

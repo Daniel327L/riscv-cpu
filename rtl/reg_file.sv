@@ -19,30 +19,24 @@ module reg_file (
     input  logic [4:0]  rs2_addr,    //second register address to extract value inside
     input  logic [4:0]  rd_addr,	 //which register to store rd_data
     input  logic [31:0] rd_data,     //values you want to store 
-	input  logic [4:0]  debug_addr,
     output logic [31:0] rs1_data,    //first output 
-    output logic [31:0] rs2_data,     //second output
-	output logic [31:0] debug_data
+    output logic [31:0] rs2_data     //second output
 );
 
     // 32 architectural registers.
-    logic [31:0] regs [31:0]; //reg type array consisting of elemenents with 32 bits width (left), 32 element in total (right)
-                            
+    (* ramstyle = "logic" *) logic [31:0] regs [31:0]; 
+    //the () tells Quartus to use RAM in fabric, not other external RAM
 
-always_ff@(posedge clk) begin 
+always_ff@(negedge clk) begin 
     if(we && rd_addr != 5'd0) begin //logic here stays untouched
         regs[rd_addr] <= rd_data;
     end
 end      
 
-assign rs1_data = (rs1_addr == '0) ? '0 : //includes forwarding of WB data for both rs1 and 2 
-                  (we && rd_addr == rs1_addr) ? rd_data :
-                  regs[rs1_addr];
+assign rs1_data = rs1_addr ? regs[rs1_addr] : '0; //wb forwarding is now handled by writing in reg on negedge instead of posedge
+                  
 
-assign rs2_data = (rs2_addr == '0) ? '0 :
-                  (we && rd_addr == rs2_addr) ? rd_data :
-                  regs[rs2_addr];
+assign rs2_data = rs2_addr ? regs[rs2_addr] : '0;
 
-assign debug_data = (debug_addr != 5'd0) ? regs[debug_addr] : 32'b0 ;
 
 endmodule

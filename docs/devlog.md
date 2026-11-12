@@ -28,6 +28,35 @@
 
 **Root cause:** Turns out I did not declare the wire `alu_result`, which by default in Verilog, it was created as 1-bit wire, therefore any odd number result would shows up as 1, and for even it would be 0. 
 
-**Fix + lesson:** The fix for this is simple and self-explanatory, by declareing a 32 bit wire `alu_result`, it was able to capture the full 32 bit result from any operations. A takeaway from this is to always check for undeclared wires and signals, which is quite common to miss out. In addition, this also strenghens my root cause finding skills, by just carefully observing the result, I can pinpoint where the code went wrong. 
+**Fix + lesson:** The fix for this is simple and self-explanatory, by declareing a 32 bit wire `alu_result`, it was able to capture the full 32 bit result from any operations. A takeaway from this is to always check for undeclared wires and signals, which is quite common to miss out. In addition, this also strenghens my root cause finding skills, by just carefully observing the result, I can pinpoint where the code went wrong.
+
+---
+
+## [2026-11-11] - Fmax dropped after adding the branch predictor
+
+**Symptom:** After adding the BTB + BHT branch predictor, CPI improved nicely (1.42 -> 1.30) but Fmax *dropped* from ~64 MHz to ~50 MHz, and kept sliding toward 44 MHz as I made changes. Net throughput actually went *down*. Something I added was sitting on the critical path.
+
+![](../Images/Reg%20in%20M9K.png)
+*The register file was being inferred into M9K (ALTSYNCRAM), with write-first bypass glue around it.*
+
+**Hypothesis:** My first guess was fabric congestion — the BTB's big asynchronous LUT muxes crowding the chip. So I shrank the BHT, forced the register file in and out of M9K, converted memory toward BRAM... and Fmax barely moved, or got *worse*.
+
+**Investigation:** I stopped guessing and read the Quartus Timing Analyzer critical path at every step. It kept pointing somewhere different than I expected, and each fix just exposed the *next* path underneath:
+- Reg-file **write-first bypass** (`mem_wb.rd_addr -> id_ex.rs1_data`) — a combinational chain from the WB writeback value, through the register read, into the ID/EX reg.
+- Forcing the reg file *out* of M9K made it *worse* (added fabric) — proof the problem wasn't the reg file's implementation.
+- The data memory **wasn't inferring BRAM at all** — my byte-enable *slice* writes didn't match any template Quartus recognizes, so all 8k bits stayed in logic.
+- The **mispredict 32-bit comparator** (`actual_next_pc != predicted`) stacked on the end of the branch-resolution path, right in the PC feedback loop.
+
+**Root cause:** It was never one thing, and it was never congestion. It was a *stack* of combinational paths all converging on the PC / ID-EX register — dominated by the register-file write-first bypass and the mispredict comparator. The predictor added the comparator; the synchronous-memory restructure later added the WB byte-select into the forwarding path.
+
+**Fix + lesson:** Three targeted fixes, each verified on the timing report:
+1. **Negedge-write register file** — write on the falling edge so a distance-3 read sees the value without any combinational bypass. Deletes the `wb_data -> bypass -> id_ex` chain entirely.
+2. **Byte-lane data memory** — four byte-wide arrays with per-lane enables and a registered read. Quartus finally inferred M9K (8,192 bits), freeing ~8,100 flops and halving logic.
+3. **Direction-based mispredict** — precompute the comparisons from registered values and select with the 1-bit `branch_taken`, moving the 32-bit compare *off* the PC loop. `jalr` always-flushes (indirect target is late + rare).
+
+Fmax went 44 -> 51.72 MHz. Lessons: (1) trust the timing report over intuition — I guessed the critical path wrong three times and the report was right every time; (2) Fmax costs are paid by *every* instruction while CPI costs only hit the instruction that triggers them, so never put rare-event logic (like jalr detection) on the critical path; (3) RAM inference is *template-matching*, not synthesis — write the vendor's exact template or it falls back to logic; (4) the honest architectural finding — a branch predictor doesn't pay for itself on a core that resolves branches in EX, because the resolution path *is* the clock limiter. Realizing its benefit needs early branch resolution or a deeper front end.
+
+![](../Images/branch%20predictor%20fix%203.png)
+*Final: Fmax 51.72 MHz, data memory in BRAM, logic usage halved.* 
 
 ---
