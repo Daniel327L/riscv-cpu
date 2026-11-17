@@ -92,8 +92,15 @@ package riscv_pkg;
         logic valid;
         logic [23:0] tag; //upper pc bit, since 6 pc bit is used for index
         logic [31:0] target; 
-        logic is_cond; //if it's branch or jump
+        b_type_e b_type; //expanded to 2 bit to handle, branch, uncondtional jump with x0 , function calls and return;
     } btb_s;
+
+    typedef enum logic [1:0] {
+        branch = 0,
+        jump = 2'b01,
+        call = 2'b10,
+        ret = 2'b11
+    } b_type_e;
 
     //bht is only 2 bit entry = 2 bit saturating counter
 

@@ -37,12 +37,31 @@ assign bht_index = pc[8:2];
 assign btb_index = pc[7:2];
 assign btb_hit = btb[btb_index].valid && (btb[btb_index].tag == pc[31:8]);
 
-assign predict_taken = btb_hit && (btb[btb_index].is_cond ? bht_counter[bht_index][1] : '1 );
-assign predicted_next_pc = predict_taken ? btb[btb_index].target : pc + 32'd4;
-
-
+always_comb begin
+    if(predict_taken) begin
+        case(btb[btb_index].b_type)  
+            branch: predicted_next_pc = (bht[bht_index][1]) ? btb[btb_index].target : pc + 32'd4;
+            jump: predicted_next_pc = btb[btb_index].target;
+            call: predicted_next_pc = btb[btb_index].target; //need to push return address onto the stack
+            ret: predicted_next_pc = return_address; //driven by the RAS, need to pop from stack 
+        endcase
+    end else 
+        predicted_next_pc = pc + 32'd4;
+end
 
 //------------------------- end of branch prediction unit ----------------------------------------------------
+
+//------------------------- Return address stack -----------------------------------------------
+
+logic [31:0] ras [0:15];
+logic [31:0] return_address;
+logic ras_ptr [0:15] = 0; 
+
+always_comb begin 
+        return_address = ras[ras_counter-1];
+end
+
+//-------------------------- end of RAS -----------------------------------------------------------------
 
 always_ff@(posedge clk) begin
     if(!reset)begin
@@ -277,7 +296,7 @@ always_ff@(posedge clk) begin
             btb[btb_wr].valid <= '1;
             btb[btb_wr].tag <= id_ex.pc[31:8];
             btb[btb_wr].target <= redirect_target;
-            btb[btb_wr].is_cond <= id_ex.ctrl.branch; //check for conditional or not
+            btb[btb_wr].b_type <= id_ex.ctrl.branch; //need to update for RAS
         end
         if(id_ex.ctrl.branch) begin
             if(branch_taken) //for BHT
