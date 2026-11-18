@@ -1,22 +1,26 @@
 # RISC-V RV32I CPU Core
 
-A **RISC-V RV32I** processor built from scratch in SystemVerilog — first as a single-cycle core, then re-architected as a **5-stage pipeline** with full hazard handling and a **branch predictor**. Runs compiled C end-to-end and deployed to an Intel MAX 10 FPGA.
+A **RISC-V RV32I** processor built from scratch in SystemVerilog — first as a single-cycle core, then re-architected as a **5-stage pipeline** with full hazard handling and a **branch predictor (BTB + BHT + return-address stack)**. Runs compiled C end-to-end and deployed to an Intel MAX 10 FPGA.
 
 ## Results
 
 | Metric | Single-cycle | 5-stage pipeline | + branch predictor |
 |---|---|---|---|
-| **Fmax** | 43.43 MHz | **63.89 MHz** | 51.72 MHz |
+| **Fmax** | 43.43 MHz | **63.89 MHz** | ~50 MHz |
 | **CPI** | 1.00 | 1.42 | **1.30** |
-| **Throughput** (Fmax ÷ CPI) | 43.4 MIPS | **45.0 MIPS** | 39.8 MIPS |
+| **Throughput** (Fmax ÷ CPI) | 43.4 MIPS | **45.0 MIPS** | ~40 MIPS |
 | **Logic elements** | 18,213 | 12,293 | **8,016** |
-| **Registers** | 9,216 | 8,696 | **5,531** |
+| **Registers** | 9,216 | 8,696 | ~5,500 |
 
-*CPI on a compiled `-O0` sum loop; FPGA numbers from Quartus (MAX 10 10M50DAF484C7G, slow model). Data memory inferred into M9K block RAM (8,192 bits).*
+*CPI on a compiled `-O0` sum loop; FPGA numbers from Quartus (MAX 10 10M50DAF484C7G, slow model). Data memory inferred into M9K block RAM (8,192 bits). The predictor's Fmax sits at ~50 MHz across every variant tried — see Performance for why.*
 
 ## Performance
 
-The branch predictor (64-entry BTB + 128-entry 2-bit BHT) cuts **CPI 1.42 → 1.30** by killing the per-loop branch flush. But it also drops **Fmax 63.89 → 51.72 MHz**: branches resolve in EX, so the forwarded-operand → compare → redirect path is the critical path, and the predictor's mispredict logic piles onto it. Net throughput therefore *falls* (~45 → ~40 MIPS) — a real finding, not a bug: **on a simple core that resolves branches in EX, a predictor doesn't pay for itself.** Realizing its benefit needs early branch resolution (in ID) or a deeper fetch pipeline. Full root-cause writeup in [`docs/devlog.md`](docs/devlog.md).
+The branch predictor — a 64-entry BTB, a 128-entry 2-bit BHT, and a 16-entry **return-address stack** for function returns — cuts **CPI 1.42 → ~1.3** by eliminating the per-loop branch flush and predicting returns. But Fmax stays pinned near **50 MHz**, and tracking down *why* became the core finding of the project.
+
+Branches resolve in **EX**, so the critical path is the **forwarded-operand → branch-resolve chain**: `forwarding mux → ALU/adder → direction + target`. That chain is unavoidable in EX because **two** things consume its output there — mispredict detection *and* predictor training (the BTB/BHT writes). Two experiments confirmed it: **direction-based mispredict detection** (keeping the 32-bit compare off the PC loop) and **moving mispredict resolution to the MEM stage** — and *neither lifted the ceiling*, because the resolve chain itself never leaves EX. (Moving the mispredict out just handed the critical path to the BTB-write consumer; the forwarded path stayed put.)
+
+So net throughput is a tradeoff (~45 → ~40 MIPS): **on a core that resolves branches in EX with operand forwarding, a predictor doesn't pay for itself on this workload.** The predictor machinery is all in place — the bottleneck is structural. The real lever is **early branch resolution** (resolve in ID, before an operand can be a fresh ALU result) or a deeper fetch pipeline.
 
 Separately, moving the data memory to a synchronous, byte-enabled array let Quartus infer **M9K block RAM**, pulling ~8,100 flip-flops out of the fabric and **halving logic usage** (18k → 8k LEs).
 
@@ -24,7 +28,7 @@ Separately, moving the data memory to a synchronous, byte-enabled array let Quar
 
 - **Full RV32I** (~40 instructions): R/I arithmetic, loads/stores with **sub-word byte-enable access**, branches (signed/unsigned), `jal`/`jalr`, `lui`/`auipc`.
 - **5-stage pipeline** (IF/ID/EX/MEM/WB) with **3-path forwarding**, a **load-use stall**, and **branch/jump flush** (resolved in EX).
-- **Branch predictor** — BTB + 2-bit BHT, with **direction-based mispredict detection** that keeps the 32-bit compare off the PC loop.
+- **Branch predictor** — 64-entry BTB + 128-entry 2-bit BHT + 16-entry **return-address stack**, with instruction classification (branch / jump / call / ret) decoded from the RISC-V link-register hints (`x1`/`x5`). Direction-based mispredict detection keeps the 32-bit compare off the PC loop.
 - **Negedge-write register file** — removes the combinational write-first bypass that was the critical path.
 - **Synchronous data memory** inferred as **M9K block RAM**.
 - **Runs compiled C** via the RISC-V GNU toolchain. `sum(1..10)` returns `a0 = 0x37 = 55`.
@@ -35,30 +39,31 @@ Separately, moving the data memory to a synchronous, byte-enabled array let Quar
 ```
 IF ─[IF/ID]─ ID ─[ID/EX]─ EX ─[EX/MEM]─ MEM ─[MEM/WB]─ WB
 instr_mem    control      ALU           data_mem       reg_file
-             reg_file rd  alu_ctrl      (BRAM,         write
+BTB/BHT/RAS  reg_file rd  alu_ctrl      (BRAM,         write
              imm_gen      forward +      byte-enable)  (negedge)
-             predict      branch + mispredict
+             b_type       branch resolve + train
 ```
 
-Harvard memories (separate instruction/data). Control signals are bundled in a packed `control_s` struct and carried through typed pipeline-register structs (`if_id_s` … `mem_wb_s`). Forwarding and hazard detection live in EX; branches/jumps resolve in EX and redirect/flush the front end. The branch prediction (IF) and its update (EX) ride through the pipeline alongside each instruction.
+Harvard memories (separate instruction/data). Control signals are bundled in a packed `control_s` struct and carried through typed pipeline-register structs (`if_id_s` … `mem_wb_s`). The predictor (BTB/BHT/RAS) runs in IF; each instruction is classified into a `b_type` (branch/jump/call/ret) in ID and carries its prediction down the pipe; branch resolution, mispredict detection, and predictor training all happen in EX.
 
 ## Verification
 
-Every instruction is checked against expected register/memory state; test programs are generated by the RISC-V toolchain (`.s`/`.c` → ELF → hex — no hand-encoding). Compiled C runs end-to-end, and CPI is measured in simulation via a retired-instruction counter (a `valid` bit separates real instructions from bubbles). Simulated in **Verilator** (migrated from Icarus for better SystemVerilog support); waveforms in **GTKWave**.
+Every instruction is checked against expected register/memory state; test programs are generated by the RISC-V toolchain (`.s`/`.c` → ELF → hex — no hand-encoding). Compiled C runs end-to-end (function calls, returns, loops), and CPI is measured in simulation via a retired-instruction counter (a `valid` bit separates real instructions from bubbles). Simulated in **Verilator** (migrated from Icarus for better SystemVerilog support); waveforms in **GTKWave**.
 
 ## Debugging Highlights
 
-- **Fmax regression after the predictor** — root-caused through five critical-path layers using the Quartus timing report (register-file bypass → negedge write; M9K reg-file mapping; data-mem BRAM inference; mispredict comparator → direction-based detection; sync-memory forwarding). See [`docs/devlog.md`](docs/devlog.md).
+- **Fmax regression after the predictor** — root-caused through several critical-path layers using the Quartus timing report (register-file bypass → negedge write; M9K reg-file mapping; data-mem BRAM inference; mispredict comparator → direction-based detection), ultimately isolating the EX branch-resolve chain as the structural limiter. See [`docs/devlog.md`](docs/devlog.md).
+- **Not-taken branch redirected to 0** — the "is this a redirect?" predicate used `b_type != none`, which is true for a *not-taken* branch; on the loop exit it sent the PC to `redirect_target` (= 0) instead of falling through. Fixed by predicating on *taken* transfers (`branch_taken || jump || call || ret`).
 - **`addi` decoded as `sub`** — the `funct7` bit (`instr[30]`) was used to pick add/sub for *all* ALU ops, but for I-type `addi` that bit belongs to the immediate; gated to R-type and I-type shifts.
-- **Read-during-write hazard** — a consumer reading in ID got a stale value while its producer was still in WB; now solved with a **negedge-write register file** (replacing the earlier combinational write-first bypass, which had become the critical path).
 
 ## Roadmap
 
 - [x] SystemVerilog migration
 - [x] 5-stage pipeline — forwarding, load-use stall, branch flush
 - [x] Branch prediction — BTB + 2-bit BHT (CPI 1.42 → 1.30)
+- [x] Return-address stack — predicts function returns from the call/return stack
 - [x] Synchronous memory → M9K BRAM inference
-- [ ] **Early branch resolution** (ID) / **return-address stack** — recover the predictor's lost throughput
+- [ ] **Early branch resolution** (ID) — the remaining lever to recover the predictor's lost Fmax
 - [ ] Instruction / data caches — benchmarked hit rate and CPI impact
 - [ ] Official `riscv-tests` compliance suite
 - [ ] UART for terminal output from the running core
