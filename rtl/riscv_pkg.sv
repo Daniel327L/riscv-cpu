@@ -45,12 +45,34 @@ package riscv_pkg;
         aluop_e     alu_op;   
     } control_s;
 
+//============================ Branch predictor ==============================
+
+    typedef enum logic [2:0] {
+        none   = 3'd0,
+        branch = 3'd1,
+        jump   = 3'd2, //dosen't write 
+        call   = 3'd3,
+        ret    = 3'd4
+    } b_type_e;
+
+    typedef struct packed {
+        logic valid;
+        logic [23:0] tag; //upper pc bit, since 6 pc bit is used for index
+        logic [31:0] target; 
+        b_type_e b_type; //expanded to 2 bit to handle, branch, uncondtional jump with x0 , function calls and return;
+    } btb_s;
+
+    
+
+    //bht is only 2 bit entry = 2 bit saturating counter
+
 //============================ Pipeline registers ===============================================================
 
     typedef struct packed {
         logic [31:0] pc;
         logic [31:0] pc_plus4;
         logic [31:0] instruction;
+        logic [3:0] saved_ras_ptr;
         logic [31:0] predicted_next_pc;
         bit valid;
     } if_id_s;
@@ -61,6 +83,8 @@ package riscv_pkg;
         logic [31:0] rs1_data, rs2_data;
         logic [2:0] funct3;
         logic funct7_5;
+        b_type_e b_type;
+        logic [3:0] saved_ras_ptr;
         logic [31:0] pc, pc_plus4;
         logic [31:0] predicted_next_pc;
         control_s ctrl;
@@ -73,6 +97,7 @@ package riscv_pkg;
         logic [31:0] rs2_data; //used for storing operation in MEM
         logic [4:0] rd_addr;
         logic [2:0] funct3;
+        logic [3:0] saved_ras_ptr;
         control_s ctrl;
         bit valid;
     } ex_mem_s;
@@ -86,22 +111,6 @@ package riscv_pkg;
         bit valid;
     } mem_wb_s;
 
-//============================ Branch predictor ==============================
 
-    typedef struct packed {
-        logic valid;
-        logic [23:0] tag; //upper pc bit, since 6 pc bit is used for index
-        logic [31:0] target; 
-        b_type_e b_type; //expanded to 2 bit to handle, branch, uncondtional jump with x0 , function calls and return;
-    } btb_s;
 
-    typedef enum logic [1:0] {
-        branch = 0,
-        jump = 2'b01,
-        call = 2'b10,
-        ret = 2'b11
-    } b_type_e;
-
-    //bht is only 2 bit entry = 2 bit saturating counter
-
-endpackage
+endpackage 

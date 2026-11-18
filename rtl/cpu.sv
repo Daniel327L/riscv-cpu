@@ -28,7 +28,7 @@ logic [1:0] bht_counter [0:127]; //means has 128 entries
 logic [6:0] bht_index;
 logic [5:0] btb_index;
 logic btb_hit;
-logic predict_taken;
+
 
 logic mispredict;
 logic [31:0]predicted_next_pc;
@@ -37,13 +37,16 @@ assign bht_index = pc[8:2];
 assign btb_index = pc[7:2];
 assign btb_hit = btb[btb_index].valid && (btb[btb_index].tag == pc[31:8]);
 
+
 always_comb begin
-    if(predict_taken) begin
+    if(btb_hit) begin
         case(btb[btb_index].b_type)  
-            branch: predicted_next_pc = (bht[bht_index][1]) ? btb[btb_index].target : pc + 32'd4;
+            branch: predicted_next_pc = (bht_counter[bht_index][1]) ? btb[btb_index].target : pc + 32'd4;
             jump: predicted_next_pc = btb[btb_index].target;
             call: predicted_next_pc = btb[btb_index].target; //need to push return address onto the stack
             ret: predicted_next_pc = return_address; //driven by the RAS, need to pop from stack 
+            none: predicted_next_pc = pc + 32'd4;
+            default:;
         endcase
     end else 
         predicted_next_pc = pc + 32'd4;
@@ -55,10 +58,27 @@ end
 
 logic [31:0] ras [0:15];
 logic [31:0] return_address;
-logic ras_ptr [0:15] = 0; 
+logic [3:0] ras_ptr = 0; 
 
 always_comb begin 
-        return_address = ras[ras_counter-1];
+        return_address = ras[ras_ptr-1];
+end
+
+always_ff@(posedge clk)begin
+    if(!reset) begin
+        ras_ptr <= 0;
+    end 
+    else if (mispredict) begin
+        ras_ptr <= ex_mem.saved_ras_ptr;
+    end
+    else if(!load_use_stall && btb_hit) begin
+        if(btb[btb_index].b_type == call) begin
+            ras[ras_ptr] <= pc + 32'd4;
+            ras_ptr <= ras_ptr + 1;
+        end 
+        else if(btb[btb_index].b_type == ret)
+            ras_ptr <= ras_ptr - 1;
+    end 
 end
 
 //-------------------------- end of RAS -----------------------------------------------------------------
@@ -89,6 +109,7 @@ always_ff@(posedge clk) begin
         if_id.pc <= pc;
         if_id.instruction <= if_instruction;
         if_id.pc_plus4 <= pc + 32'd4;
+        if_id.saved_ras_ptr <= ras_ptr;
         if_id.predicted_next_pc <= predicted_next_pc;
         if_id.valid <= 1;
     end
@@ -104,6 +125,13 @@ logic wb_reg_write; //all 3 driven in WB stage
 logic [31:0] wb_result;
 logic [4:0] wb_addr;
 
+b_type_e b_type;
+
+assign b_type = ctrl.branch ? branch : 
+                (ctrl.jal || ctrl.jalr) && (if_id.instruction[11:7] == 5'd1 || if_id.instruction[11:7] == 5'd5) ? call :
+                ctrl.jalr && (if_id.instruction[19:15] == 5'd1 || if_id.instruction[19:15] == 5'd5)             ? ret :
+                (ctrl.jal || ctrl.jalr)                                                                         ? jump: 
+                none;
 //------------------------------- Load stall logic ------------------------------------
 
 logic load_use_stall;
@@ -136,7 +164,6 @@ assign I_type_sr = ((opcode == op_i) && (if_id.instruction[14:12] == 3'b101)); /
 assign function7_5 = R_type || I_type_sr ? if_id.instruction[30] : 1'b0;
 
 assign opcode = opcode_e'(if_id.instruction[6:0]);
-
 
 imm_gen u2 (
 .instr(if_id.instruction),
@@ -177,6 +204,8 @@ always_ff@(posedge clk) begin
         id_ex.rs2_data <= rs2_data; 
         id_ex.funct3 <= if_id.instruction[14:12];
         id_ex.funct7_5 <= function7_5;
+        id_ex.b_type <= b_type;
+        id_ex.saved_ras_ptr <= if_id.saved_ras_ptr;
         id_ex.pc <= if_id.pc;
         id_ex.pc_plus4 <= if_id.pc_plus4;
         id_ex.ctrl <= ctrl;
@@ -268,38 +297,38 @@ assign redirect_target = branch_taken   ? id_ex.pc + id_ex.immediate :
                          id_ex.ctrl.jalr ? (alu_a + id_ex.immediate) & ~32'b1 :
                          '0;
 
-assign actual_next_pc = (branch_taken || id_ex.ctrl.jal || id_ex.ctrl.jalr)
+assign actual_next_pc = (branch_taken || id_ex.b_type == call || id_ex.b_type == ret || id_ex.b_type == jump)
                         ? redirect_target : id_ex.pc_plus4;
                   
 always_comb begin
     if(!id_ex.valid)
         mispredict = '0;
-    else if(id_ex.ctrl.branch) 
+    else if(id_ex.b_type == branch) 
         mispredict = branch_taken ? (id_ex.predicted_next_pc != id_ex.pc + id_ex.immediate) : 
                                     (id_ex.predicted_next_pc != id_ex.pc_plus4);
-    else if(id_ex.ctrl.jal)
+    else if(id_ex.b_type == jump || id_ex.b_type == call )
         mispredict = id_ex.predicted_next_pc != id_ex.pc + id_ex.immediate;
-    else if (id_ex.ctrl.jalr)
-        mispredict = '1; //flush anway, because it's rare and comparing predicted with id_ex.rs1_data + id_ex.immediate is super late consider forwarding
+    else if (id_ex.b_type == ret)
+        mispredict = id_ex.predicted_next_pc != redirect_target;
     else
         mispredict = id_ex.predicted_next_pc != id_ex.pc_plus4;
 end
 
-//--------------------------- Writing for branch predictor ---------------------------------------
+//--------------------------- Writing for branch predictor + RAS ---------------------------------------
 
 assign bht_wr = id_ex.pc[8:2];
 assign btb_wr = id_ex.pc[7:2];
 
 always_ff@(posedge clk) begin
     if(id_ex.valid) begin //for BTB
-        if((id_ex.ctrl.branch && branch_taken) || id_ex.ctrl.jal || id_ex.ctrl.jalr) begin
+        if((id_ex.b_type == branch && branch_taken) || id_ex.b_type == call || id_ex.b_type == ret || id_ex.b_type == jump) begin
             btb[btb_wr].valid <= '1;
             btb[btb_wr].tag <= id_ex.pc[31:8];
             btb[btb_wr].target <= redirect_target;
-            btb[btb_wr].b_type <= id_ex.ctrl.branch; //need to update for RAS
+            btb[btb_wr].b_type <= id_ex.b_type; 
         end
-        if(id_ex.ctrl.branch) begin
-            if(branch_taken) //for BHT
+        if(id_ex.b_type == branch) begin
+            if(branch_taken) //for BHT cxounter
                 bht_counter[bht_wr] <= (bht_counter[bht_wr] == 2'b11) ? bht_counter[bht_wr] :  bht_counter[bht_wr] +1 ;
             else
                 bht_counter[bht_wr] <= (bht_counter[bht_wr] == 2'b00) ? bht_counter[bht_wr] :  bht_counter[bht_wr] -1 ;
@@ -311,8 +340,9 @@ initial begin //initialize all valid bit as 0
     for(int i = 0; i < 64; i++)
         btb[i].valid = '0; 
 end
-    
-//------------------------------ End of branch predictor writing ------------------------------------------
+
+
+//------------------------------ End of writing ------------------------------------------
 
 //====================================== EX -> MEM reg =========================================================
 
@@ -327,6 +357,7 @@ always_ff@(posedge clk) begin
         ex_mem.rs2_data <= frwd_rs2;
         ex_mem.rd_addr <= id_ex.rd_addr;
         ex_mem.funct3 <= id_ex.funct3;
+        ex_mem.saved_ras_ptr <= id_ex.saved_ras_ptr;
         ex_mem.ctrl <= id_ex.ctrl;
         ex_mem.valid <= id_ex.valid;
     end
