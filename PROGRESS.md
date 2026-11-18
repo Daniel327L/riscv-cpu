@@ -321,3 +321,19 @@
 - Realize the predictor's benefit: move to **early branch resolution** (resolve in ID) or a deeper fetch pipeline, so adding the predictor doesn't cost Fmax.
 - **Return-address stack** for `jalr` (predict returns instead of always-flushing).
 - Official `riscv-tests` compliance suite; instruction/data caches.
+
+> Day 25 - 2026-11-17
+
+## Done
+- Implemented an Return Address Stack (RAS), useful for predicting function returns.
+- Confirmed working after implementing RAS, verified against register value and similiar CPI metric.
+- Moved mispredict logic to MEM stage to reduce critical path.
+- Result was slightly elevated CPI due to one more stage needing to flush when mispredict, but the Fmax got worse by 1 MHz.
+- Discovered that there is actually another critical path that needs to be resolve, which is branch resolving that needs forwarded rs1.
+
+![](Images/branch%20resolve%20crit.path.png)
+*Critical path analyzed in Quartus Prime Timing Analyzer*
+
+## Doing
+- Investigate more into this by using the Timing analyzer in Quartus Prime to check where most of the slack occurs. 
+- Possibly move the training part of the branch predictor into MEM stage.

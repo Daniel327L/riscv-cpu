@@ -98,6 +98,8 @@ package riscv_pkg;
         logic [4:0] rd_addr;
         logic [2:0] funct3;
         logic [3:0] saved_ras_ptr;
+        logic [31:0] predicted_next_pc;
+        logic [31:0] actual_next_pc;
         control_s ctrl;
         bit valid;
     } ex_mem_s;

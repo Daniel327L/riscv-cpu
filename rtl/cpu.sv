@@ -87,7 +87,7 @@ always_ff@(posedge clk) begin
     if(!reset)begin
         pc <= '0; 
     end else if(mispredict) begin
-        pc <= actual_next_pc;     
+        pc <= ex_mem.actual_next_pc;     
     end else if(load_use_stall)begin 
         pc <= pc;
     end else begin 
@@ -300,19 +300,7 @@ assign redirect_target = branch_taken   ? id_ex.pc + id_ex.immediate :
 assign actual_next_pc = (branch_taken || id_ex.b_type == call || id_ex.b_type == ret || id_ex.b_type == jump)
                         ? redirect_target : id_ex.pc_plus4;
                   
-always_comb begin
-    if(!id_ex.valid)
-        mispredict = '0;
-    else if(id_ex.b_type == branch) 
-        mispredict = branch_taken ? (id_ex.predicted_next_pc != id_ex.pc + id_ex.immediate) : 
-                                    (id_ex.predicted_next_pc != id_ex.pc_plus4);
-    else if(id_ex.b_type == jump || id_ex.b_type == call )
-        mispredict = id_ex.predicted_next_pc != id_ex.pc + id_ex.immediate;
-    else if (id_ex.b_type == ret)
-        mispredict = id_ex.predicted_next_pc != redirect_target;
-    else
-        mispredict = id_ex.predicted_next_pc != id_ex.pc_plus4;
-end
+
 
 //--------------------------- Writing for branch predictor + RAS ---------------------------------------
 
@@ -347,7 +335,7 @@ end
 //====================================== EX -> MEM reg =========================================================
 
 always_ff@(posedge clk) begin
-    if(!reset) begin
+    if(!reset || mispredict) begin
         ex_mem <= '0;
         ex_mem.valid <= 0;
     end
@@ -358,6 +346,8 @@ always_ff@(posedge clk) begin
         ex_mem.rd_addr <= id_ex.rd_addr;
         ex_mem.funct3 <= id_ex.funct3;
         ex_mem.saved_ras_ptr <= id_ex.saved_ras_ptr;
+        ex_mem.predicted_next_pc <= id_ex.predicted_next_pc;
+        ex_mem.actual_next_pc <= actual_next_pc;
         ex_mem.ctrl <= id_ex.ctrl;
         ex_mem.valid <= id_ex.valid;
     end
@@ -387,6 +377,7 @@ assign byte_enable = ex_mem.funct3 == 3'b010 ? 4'b1111 :
                      ex_mem.funct3 == 3'b000 && byte_sel == 2'b11 ? 4'b1000:
                      4'b0000;
 
+assign mispredict = ex_mem.valid && (ex_mem.predicted_next_pc != ex_mem.actual_next_pc);
 
 data_mem u7 (  
 .clk(clk),
